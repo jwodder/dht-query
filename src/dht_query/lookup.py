@@ -38,13 +38,16 @@ async def lookup(info_hash: bytes, timeout: float = DEFAULT_TIMEOUT) -> list[Ine
                 )
                 r = await client.get_peers(n.address, info_hash, timeout=timeout)
             except (DhtProtoError, OSError, TypeError, UnbencodeError, ValueError) as e:
-                log.warning("Error communicating with node: %s: %s", type(e), e)
+                log.warning(
+                    "Error communicating with node: %s: %s", type(e).__name__, str(e)
+                )
             else:
                 log.info(
                     "Node returned %d peer(s) and %d node(s)",
                     len(r.peers),
                     len(r.nodes),
                 )
+                nodes.extend(r.nodes)
                 if similarity(n.id, info_hash) >= SIMILARITY_TARGET and r.peers:
                     return r.peers
         raise RuntimeError("Could not find close enough node with peers")
@@ -134,12 +137,15 @@ class NodeTable:
     info_hash: bytes
     counter: int = field(init=False, default=0)
     nodes: list[tuple[int, int, Node]] = field(init=False, default_factory=list)
+    seen_addrs: set[InetAddr] = field(init=False, default_factory=set)
 
     def extend(self, nodes: list[Node]) -> None:
         for n in nodes:
-            t = (similarity(n.id, self.info_hash), self.counter, n)
-            self.counter += 1
-            heapq.heappush(self.nodes, t)
+            if (addr := n.address) not in self.seen_addrs:
+                t = (-similarity(n.id, self.info_hash), self.counter, n)
+                self.counter += 1
+                heapq.heappush(self.nodes, t)
+                self.seen_addrs.add(addr)
 
     def pop_nearest(self) -> Node | None:
         try:

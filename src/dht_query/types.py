@@ -5,7 +5,7 @@ import re
 import socket
 
 
-@dataclass
+@dataclass(frozen=True)
 class InetAddr:
     host: str | IPv4Address | IPv6Address
     port: int

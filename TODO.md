@@ -11,3 +11,9 @@
     - Write all peers returned from the most recent node (and peers from
       previous nodes?  If a CLI option is given?) to stdout or a given file in
       `IP:PORT` format
+
+- `lookup`:
+    - Add `--timeout` option
+    - Add option for setting similarity target
+    - Include time in logging output
+    - Add option for outputting all peers found in session
