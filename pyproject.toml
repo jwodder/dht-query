@@ -33,7 +33,9 @@ classifiers = [
 ]
 
 dependencies = [
+    "anyio ~= 4.12",
     "click ~= 8.2",
+    "colorlog ~= 6.0",
     "platformdirs ~= 4.5",
 ]
 
