@@ -106,6 +106,7 @@ def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None
     msg = unbencode(reply)
     expand_ip(msg)
     expand_nodes(msg)
+    expand_values(msg)
     pprint(msg)
 
 
@@ -145,6 +146,16 @@ def expand_nodes(msg: dict[bytes, Any]) -> None:
             pass
         else:
             msg[b"r"][b"nodes6"] = nodes
+
+
+def expand_values(msg: dict[bytes, Any]) -> None:
+    if (lst := msg.get(b"r", {}).get(b"values")) is not None and isinstance(lst, list):
+        try:
+            lst2 = [uncompact_addr(v) for v in lst]
+        except ValueError:
+            pass
+        else:
+            msg[b"r"][b"values"] = lst2
 
 
 def uncompact_addr(bs: bytes) -> tuple[IPv4Address | IPv6Address, int]:
