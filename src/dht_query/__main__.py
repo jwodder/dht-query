@@ -110,6 +110,23 @@ def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None
     pprint(msg)
 
 
+@main.command()
+@click.argument("addr", type=InetAddr.parse)
+def error(addr: InetAddr) -> None:
+    query = {
+        b"t": gen_transaction_id(),
+        b"y": b"q",
+        b"q": b"poke",
+        b"a": {b"id": MY_NODE_ID},
+        b"v": b"TEST",
+        b"ro": 1,
+    }
+    reply = chat(addr, bencode(query))
+    msg = unbencode(reply)
+    expand_ip(msg)
+    pprint(msg)
+
+
 def chat(addr: InetAddr, msg: bytes) -> bytes:
     with socket.socket(type=socket.SOCK_DGRAM) as s:
         s.settimeout(TIMEOUT)

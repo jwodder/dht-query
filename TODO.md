@@ -1,4 +1,4 @@
 - Support IPv6 hosts
 - Stop hardcoding our node ID
     - Store it in a platformdirs dir?
-- Either add tests or remove the testing bits from `tox.ini`
+- Add a `--timeout <secs>` option
