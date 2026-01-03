@@ -30,6 +30,17 @@ class InetAddr:
         return cls(host=host, port=port)
 
     @classmethod
+    def from_pair(cls, host_str: str, port: int) -> InetAddr:
+        host: str | IPv4Address | IPv6Address
+        if re.fullmatch(r"\d+\.\d+\.\d+\.\d+", host_str):
+            host = IPv4Address(host_str)
+        elif re.fullmatch(r"[A-Fa-f0-9:]+", host_str):
+            host = IPv6Address(host_str)
+        else:
+            host = host_str
+        return cls(host=host, port=port)
+
+    @classmethod
     def from_compact(cls, bs: bytes) -> InetAddr:
         if len(bs) == 6:
             ip4 = IPv4Address(bs[:4])
@@ -41,6 +52,12 @@ class InetAddr:
             return cls(host=ip6, port=port)
         else:
             raise ValueError(f"Compact address has invalid length {len(bs)}")
+
+    def __str__(self) -> str:
+        if isinstance(self.host, IPv6Address):
+            return f"[{self.host}]:{self.port}"
+        else:
+            return f"{self.host}:{self.port}"
 
     def resolve(self) -> tuple[socket.AddressFamily, str, int]:
         if isinstance(self.host, str):
@@ -71,6 +88,10 @@ class Node:
         addr = InetAddr.from_compact(bs[20:])
         assert not isinstance(addr.host, str)
         return cls(id=nid, ip=addr.host, port=addr.port)
+
+    @property
+    def address(self) -> InetAddr:
+        return InetAddr(host=self.ip, port=self.port)
 
 
 def parse_info_hash(s: str) -> bytes:

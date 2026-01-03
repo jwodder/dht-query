@@ -20,31 +20,46 @@ def expand_ip(msg: dict[bytes, Any]) -> None:
             pass
 
 
-def expand_nodes(msg: dict[bytes, Any]) -> None:
-    if (bs := msg.get(b"r", {}).get(b"nodes")) is not None and isinstance(bs, bytes):
-        try:
-            nodes = [Node.from_compact(n) for n in split_bytes(bs, 26)]
-        except ValueError:
-            pass
-        else:
-            msg[b"r"][b"nodes"] = nodes
-    if (bs := msg.get(b"r", {}).get(b"nodes6")) is not None and isinstance(bs, bytes):
-        try:
-            nodes = [Node.from_compact(n) for n in split_bytes(bs, 38)]
-        except ValueError:
-            pass
-        else:
-            msg[b"r"][b"nodes6"] = nodes
+def expand_nodes(msg: dict[bytes, Any], strict: bool = False) -> None:
+    if (bs := msg.get(b"r", {}).get(b"nodes")) is not None:
+        if isinstance(bs, bytes):
+            try:
+                nodes = [Node.from_compact(n) for n in split_bytes(bs, 26)]
+            except ValueError:
+                if strict:
+                    raise
+                else:
+                    pass
+            else:
+                msg[b"r"][b"nodes"] = nodes
+        elif strict:
+            raise TypeError(f"r.nodes is {type(bs)} instead of bytes")
+    if (bs := msg.get(b"r", {}).get(b"nodes6")) is not None:
+        if isinstance(bs, bytes):
+            try:
+                nodes = [Node.from_compact(n) for n in split_bytes(bs, 38)]
+            except ValueError:
+                if strict:
+                    raise
+                else:
+                    pass
+            else:
+                msg[b"r"][b"nodes6"] = nodes
+        elif strict:
+            raise TypeError(f"r.nodes6 is {type(bs)} instead of bytes")
 
 
-def expand_values(msg: dict[bytes, Any]) -> None:
-    if (lst := msg.get(b"r", {}).get(b"values")) is not None and isinstance(lst, list):
-        try:
-            lst2 = [InetAddr.from_compact(v) for v in lst]
-        except ValueError:
-            pass
-        else:
-            msg[b"r"][b"values"] = lst2
+def expand_values(msg: dict[bytes, Any], strict: bool = False) -> None:
+    if (lst := msg.get(b"r", {}).get(b"values")) is not None:
+        if isinstance(lst, list):
+            try:
+                lst2 = [InetAddr.from_compact(v) for v in lst]
+            except ValueError:
+                pass
+            else:
+                msg[b"r"][b"values"] = lst2
+        elif strict:
+            raise TypeError(f"r.values is {type(lst)} instead of list")
 
 
 def split_bytes(bs: bytes, size: int) -> Iterator[bytes]:
