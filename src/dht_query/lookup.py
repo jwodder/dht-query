@@ -182,7 +182,7 @@ def similarity(bs1: bytes, bs2: bytes) -> int:
     """
     sim = 0
     for b1, b2 in zip(bs1, bs2):
-        b = b1 & b2
+        b = ~(b1 ^ b2) & 0xFF
         if b == 0xFF:
             sim += 8
         else:
