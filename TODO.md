@@ -5,4 +5,4 @@
     - Add option for setting similarity target
     - Add option for outputting all peers found in session
     - Add option for bootstrap node to use?
-    - Include time in logging output
+    - Support querying multiple nodes at once via worker tasks?

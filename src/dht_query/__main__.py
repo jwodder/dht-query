@@ -136,7 +136,8 @@ def set_node_id_cmd(ip: IPv4Address | None) -> None:
 @click.argument("info_hash", type=parse_info_hash)
 def lookup_cmd(info_hash: bytes, outfile: IO[str]) -> None:
     colorlog.basicConfig(
-        format="%(log_color)s[%(levelname)-8s] %(message)s",
+        format="%(log_color)s%(asctime)s [%(levelname)-8s] %(message)s",
+        datefmt="%H:%M:%S",
         log_colors={
             "DEBUG": "cyan",
             "INFO": "bold",
