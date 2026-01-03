@@ -6,6 +6,7 @@ from ipaddress import IPv4Address, IPv6Address
 from pathlib import Path
 from pprint import pprint
 import random
+import re
 import socket
 from typing import Any
 import click
@@ -21,19 +22,43 @@ DEFAULT_TIMEOUT = 60.0
 
 @dataclass
 class InetAddr:
-    host: str
+    host: str | IPv4Address | IPv6Address
     port: int
 
     @classmethod
     def parse(cls, s: str) -> InetAddr:
-        host, colon, port_str = s.partition(":")
-        if not colon:
-            raise ValueError(f"invalid address: {s!r}")
-        try:
-            port = int(port_str)
-        except ValueError:
-            raise ValueError(f"invalid address: {s!r}")
+        host: str | IPv4Address | IPv6Address
+        if m := re.fullmatch(r"(\d+\.\d+\.\d+\.\d+):(\d+)", s):
+            host = IPv4Address(m[1])
+            port = int(m[2])
+        elif m := re.fullmatch(r"\[([A-Fa-f0-9:]+)\]:(\d+)", s):
+            host = IPv6Address(m[1])
+            port = int(m[2])
+        else:
+            host, colon, port_str = s.partition(":")
+            if not colon:
+                raise ValueError(f"invalid address: {s!r}")
+            try:
+                port = int(port_str)
+            except ValueError:
+                raise ValueError(f"invalid address: {s!r}")
         return cls(host=host, port=port)
+
+    def resolve(self) -> tuple[socket.AddressFamily, str, int]:
+        if isinstance(self.host, str):
+            (family, _, _, _, addr) = socket.getaddrinfo(
+                self.host, self.port, type=socket.SOCK_DGRAM
+            )[0]
+            ip = addr[0]
+            port = addr[1]
+            assert isinstance(ip, str)
+            assert isinstance(port, int)
+            return (family, ip, port)
+        elif isinstance(self.host, IPv4Address):
+            return (socket.AF_INET, str(self.host), self.port)
+        else:
+            assert isinstance(self.host, IPv6Address)
+            return (socket.AF_INET6, str(self.host), self.port)
 
 
 @dataclass
@@ -164,10 +189,15 @@ def set_node_id_cmd(ip: IPv4Address | None) -> None:
 
 
 def chat(addr: InetAddr, msg: bytes, timeout: float = DEFAULT_TIMEOUT) -> bytes:
-    with socket.socket(type=socket.SOCK_DGRAM) as s:
+    (family, ip, port) = addr.resolve()
+    with socket.socket(family=family, type=socket.SOCK_DGRAM) as s:
         s.settimeout(timeout)
-        s.bind(("0.0.0.0", 0))
-        s.connect((addr.host, addr.port))
+        if family is socket.AF_INET:
+            s.bind(("0.0.0.0", 0))
+        else:
+            assert family is socket.AF_INET6
+            s.bind(("::", 0))
+        s.connect((ip, port))
         s.send(msg)
         return s.recv(UDP_PACKET_LEN)
 
