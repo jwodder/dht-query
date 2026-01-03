@@ -15,7 +15,7 @@ UDP_PACKET_LEN = 65535
 
 TRANSACTION_ID_LEN = 2
 
-TIMEOUT = 60
+TIMEOUT = 60.0
 
 
 @dataclass
@@ -62,8 +62,9 @@ def main() -> None:
 
 
 @main.command()
+@click.option("-t", "--timeout", type=float, default=TIMEOUT)
 @click.argument("addr", type=InetAddr.parse)
-def ping(addr: InetAddr) -> None:
+def ping(addr: InetAddr, timeout: float) -> None:
     query = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -72,18 +73,21 @@ def ping(addr: InetAddr) -> None:
         b"v": b"TEST",
         b"ro": 1,
     }
-    reply = chat(addr, bencode(query))
+    reply = chat(addr, bencode(query), timeout=timeout)
     msg = unbencode(reply)
     expand_ip(msg)
     pprint(msg)
 
 
 @main.command()
+@click.option("-t", "--timeout", type=float, default=TIMEOUT)
 @click.option("--want4", is_flag=True)
 @click.option("--want6", is_flag=True)
 @click.argument("addr", type=InetAddr.parse)
 @click.argument("infohash", type=parse_info_hash)
-def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None:
+def get_peers(
+    addr: InetAddr, infohash: bytes, timeout: float, want4: bool, want6: bool
+) -> None:
     query: dict[bytes, Any] = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -102,7 +106,7 @@ def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None
         if want6:
             want.append(b"n6")
         query[b"a"][b"want"] = want
-    reply = chat(addr, bencode(query))
+    reply = chat(addr, bencode(query), timeout=timeout)
     msg = unbencode(reply)
     expand_ip(msg)
     expand_nodes(msg)
@@ -111,8 +115,9 @@ def get_peers(addr: InetAddr, infohash: bytes, want4: bool, want6: bool) -> None
 
 
 @main.command()
+@click.option("-t", "--timeout", type=float, default=TIMEOUT)
 @click.argument("addr", type=InetAddr.parse)
-def error(addr: InetAddr) -> None:
+def error(addr: InetAddr, timeout: float) -> None:
     query = {
         b"t": gen_transaction_id(),
         b"y": b"q",
@@ -121,15 +126,15 @@ def error(addr: InetAddr) -> None:
         b"v": b"TEST",
         b"ro": 1,
     }
-    reply = chat(addr, bencode(query))
+    reply = chat(addr, bencode(query), timeout=timeout)
     msg = unbencode(reply)
     expand_ip(msg)
     pprint(msg)
 
 
-def chat(addr: InetAddr, msg: bytes) -> bytes:
+def chat(addr: InetAddr, msg: bytes, timeout: float = TIMEOUT) -> bytes:
     with socket.socket(type=socket.SOCK_DGRAM) as s:
-        s.settimeout(TIMEOUT)
+        s.settimeout(timeout)
         s.bind(("0.0.0.0", 0))
         s.connect((addr.host, addr.port))
         s.send(msg)
