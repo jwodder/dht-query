@@ -11,57 +11,75 @@ from .consts import DEFAULT_TIMEOUT
 from .types import InetAddr, Node
 from .util import expand_nodes, expand_values, gen_transaction_id, get_node_id
 
-BOOTSTRAP_NODE = InetAddr(host="router.bittorrent.com", port=6881)
+DEFAULT_BOOTSTRAP_NODE = InetAddr(host="router.bittorrent.com", port=6881)
 
-SIMILARITY_TARGET = 10
+DEFAULT_SIMILARITY_TARGET = 10
 
 log = logging.getLogger(__name__)
 
 
-async def lookup(
-    info_hash: bytes,
-    timeout: float = DEFAULT_TIMEOUT,
-    similarity_target: int = SIMILARITY_TARGET,
-    all_peers: bool = False,
-) -> list[InetAddr]:
-    nodes = NodeTable(info_hash)
-    peer_set = set()
-    async with await create_dht_client(get_node_id()) as client:
-        log.info('Issuing "get_peers" query to bootstrap node ...')
-        r = await client.get_peers(BOOTSTRAP_NODE, info_hash, timeout=timeout)
-        log.info(
-            "Bootstrap node returned %d peer(s) and %d node(s)",
-            len(r.peers),
-            len(r.nodes),
-        )
-        peer_set.update(r.peers)
-        nodes.extend(r.nodes)
-        while (n := nodes.pop_nearest()) is not None:
-            try:
-                log.info(
-                    'Issuing "get_peers" query to node %s at %s ...',
-                    n.id.hex(),
-                    n.address,
-                )
-                r = await client.get_peers(n.address, info_hash, timeout=timeout)
-            except (DhtProtoError, OSError, TypeError, UnbencodeError, ValueError) as e:
-                log.warning(
-                    "Error communicating with node: %s: %s", type(e).__name__, str(e)
-                )
-            else:
-                log.info(
-                    "Node returned %d peer(s) and %d node(s)",
-                    len(r.peers),
-                    len(r.nodes),
-                )
-                peer_set.update(r.peers)
-                nodes.extend(r.nodes)
-                if similarity(n.id, info_hash) >= similarity_target and r.peers:
-                    if all_peers:
-                        return list(peer_set)
-                    else:
-                        return r.peers
-        raise RuntimeError("Could not find close enough node with peers")
+@dataclass
+class Lookup:
+    info_hash: bytes
+    timeout: float = DEFAULT_TIMEOUT
+    similarity_target: int = DEFAULT_SIMILARITY_TARGET
+    all_peers: bool = False
+    bootstrap_node: InetAddr = DEFAULT_BOOTSTRAP_NODE
+
+    async def run(self) -> list[InetAddr]:
+        nodes = NodeTable(self.info_hash)
+        peer_set = set()
+        async with await create_dht_client(get_node_id()) as client:
+            log.info('Issuing "get_peers" query to bootstrap node ...')
+            r = await client.get_peers(
+                self.bootstrap_node, self.info_hash, timeout=self.timeout
+            )
+            log.info(
+                "Bootstrap node returned %d peer(s) and %d node(s)",
+                len(r.peers),
+                len(r.nodes),
+            )
+            peer_set.update(r.peers)
+            nodes.extend(r.nodes)
+            while (n := nodes.pop_nearest()) is not None:
+                try:
+                    log.info(
+                        'Issuing "get_peers" query to node %s at %s ...',
+                        n.id.hex(),
+                        n.address,
+                    )
+                    r = await client.get_peers(
+                        n.address, self.info_hash, timeout=self.timeout
+                    )
+                except (
+                    DhtProtoError,
+                    OSError,
+                    TypeError,
+                    UnbencodeError,
+                    ValueError,
+                ) as e:
+                    log.warning(
+                        "Error communicating with node: %s: %s",
+                        type(e).__name__,
+                        str(e),
+                    )
+                else:
+                    log.info(
+                        "Node returned %d peer(s) and %d node(s)",
+                        len(r.peers),
+                        len(r.nodes),
+                    )
+                    peer_set.update(r.peers)
+                    nodes.extend(r.nodes)
+                    if (
+                        similarity(n.id, self.info_hash) >= self.similarity_target
+                        and r.peers
+                    ):
+                        if self.all_peers:
+                            return list(peer_set)
+                        else:
+                            return r.peers
+            raise RuntimeError("Could not find close enough node with peers")
 
 
 @dataclass
