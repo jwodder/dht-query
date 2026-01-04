@@ -8,7 +8,7 @@ from anyio import create_udp_socket, fail_after
 from anyio.abc import AsyncResource, UDPSocket
 from .bencode import UnbencodeError, bencode, unbencode
 from .consts import DEFAULT_TIMEOUT
-from .types import InetAddr, Node
+from .types import InetAddr, Node, NodeId
 from .util import expand_nodes, expand_values, gen_transaction_id, get_node_id, quantify
 
 DEFAULT_BOOTSTRAP_NODE = InetAddr(host="router.bittorrent.com", port=6881)
@@ -45,7 +45,7 @@ class Lookup:
                 try:
                     log.info(
                         'Issuing "get_peers" query to node %s at %s ...',
-                        n.id.hex(),
+                        n.id,
                         n.address,
                     )
                     r = await client.get_peers(
@@ -72,7 +72,8 @@ class Lookup:
                     peer_set.update(r.peers)
                     nodes.extend(r.nodes)
                     if (
-                        similarity(n.id, self.info_hash) >= self.similarity_target
+                        similarity(bytes(n.id), self.info_hash)
+                        >= self.similarity_target
                         and r.peers
                     ):
                         if self.all_peers:
@@ -84,7 +85,7 @@ class Lookup:
 
 @dataclass
 class DhtClient(AsyncResource):
-    node_id: bytes
+    node_id: NodeId
     ipv4: UDPSocket
     ipv6: UDPSocket
 
@@ -101,7 +102,7 @@ class DhtClient(AsyncResource):
             b"y": b"q",
             b"q": b"get_peers",
             b"a": {
-                b"id": self.node_id,
+                b"id": bytes(self.node_id),
                 b"info_hash": info_hash,
                 b"want": [b"n4", b"n6"],
             },
@@ -171,7 +172,7 @@ class NodeTable:
     def extend(self, nodes: list[Node]) -> None:
         for n in nodes:
             if (addr := n.address) not in self.seen_addrs:
-                t = (xor_bytes(n.id, self.info_hash), -self.counter, n)
+                t = (xor_bytes(bytes(n.id), self.info_hash), -self.counter, n)
                 self.counter += 1
                 heapq.heappush(self.nodes, t)
                 self.seen_addrs.add(addr)
@@ -188,7 +189,7 @@ class DhtProtoError(Exception):
     pass
 
 
-async def create_dht_client(node_id: bytes) -> DhtClient:
+async def create_dht_client(node_id: NodeId) -> DhtClient:
     ipv4 = await create_udp_socket(family=socket.AF_INET)
     ipv6 = await create_udp_socket(family=socket.AF_INET6)
     return DhtClient(node_id=node_id, ipv4=ipv4, ipv6=ipv6)

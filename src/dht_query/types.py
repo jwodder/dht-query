@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
 import re
 import socket
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -78,13 +79,13 @@ class InetAddr:
 
 @dataclass
 class Node:
-    id: bytes
+    id: NodeId
     ip: IPv4Address | IPv6Address
     port: int
 
     @classmethod
     def from_compact(cls, bs: bytes) -> Node:
-        nid = bs[:20]
+        nid = NodeId(bs[:20])
         addr = InetAddr.from_compact(bs[20:])
         assert not isinstance(addr.host, str)
         return cls(id=nid, ip=addr.host, port=addr.port)
@@ -92,6 +93,33 @@ class Node:
     @property
     def address(self) -> InetAddr:
         return InetAddr(host=self.ip, port=self.port)
+
+
+class NodeId:
+    def __init__(self, nid: str | bytes) -> None:
+        if isinstance(nid, str):
+            nid = bytes.fromhex(nid)
+        if len(nid) != 20:
+            raise ValueError("node IDs must be 20 bytes (40 hex chars) long")
+        self.id: bytes = nid
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, NodeId):
+            return self.id == other.id
+        else:
+            return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __str__(self) -> str:
+        return self.id.hex()
+
+    def __bytes__(self) -> bytes:
+        return self.id
+
+    def __repr__(self) -> str:
+        return f"NodeId({self.id.hex()!r})"
 
 
 def parse_info_hash(s: str) -> bytes:

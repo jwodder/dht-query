@@ -5,7 +5,7 @@ import random
 from typing import Any
 from platformdirs import user_state_path
 from .consts import TRANSACTION_ID_LEN
-from .types import InetAddr, Node
+from .types import InetAddr, Node, NodeId
 
 
 def gen_transaction_id() -> bytes:
@@ -18,6 +18,22 @@ def expand_ip(msg: dict[bytes, Any]) -> None:
             msg[b"ip"] = InetAddr.from_compact(addr)
         except ValueError:
             pass
+
+
+def expand_id(msg: dict[bytes, Any], strict: bool = False) -> None:
+    if (bs := msg.get(b"r", {}).get(b"id")) is not None:
+        if isinstance(bs, bytes):
+            try:
+                nid = NodeId(bs)
+            except ValueError:
+                if strict:
+                    raise
+                else:
+                    pass
+            else:
+                msg[b"r"][b"id"] = nid
+        elif strict:
+            raise TypeError(f"r.id is {type(bs).__name__} instead of bytes")
 
 
 def expand_nodes(msg: dict[bytes, Any], strict: bool = False) -> None:
@@ -75,17 +91,17 @@ def node_id_file() -> Path:
     return user_state_path("dht-query", "jwodder") / "node-id.dat"
 
 
-def get_node_id() -> bytes:
+def get_node_id() -> NodeId:
     try:
-        return node_id_file().read_bytes()
+        return NodeId(node_id_file().read_bytes())
     except FileNotFoundError:
         raise RuntimeError("No node ID set; generate one with `set-node-id` subcommand")
 
 
-def set_node_id(bs: bytes) -> None:
+def set_node_id(bs: NodeId) -> None:
     p = node_id_file()
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_bytes(bs)
+    p.write_bytes(bytes(bs))
 
 
 def quantify(qty: int, singular: str, plural: str | None = None) -> str:

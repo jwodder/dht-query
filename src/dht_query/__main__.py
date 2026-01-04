@@ -13,8 +13,9 @@ import colorlog
 from .bencode import bencode, unbencode
 from .consts import DEFAULT_TIMEOUT, UDP_PACKET_LEN
 from .lookup import DEFAULT_SIMILARITY_TARGET, Lookup
-from .types import InetAddr, parse_info_hash
+from .types import InetAddr, NodeId, parse_info_hash
 from .util import (
+    expand_id,
     expand_ip,
     expand_nodes,
     expand_values,
@@ -38,13 +39,14 @@ def ping(addr: InetAddr, timeout: float) -> None:
         b"t": gen_transaction_id(),
         b"y": b"q",
         b"q": b"ping",
-        b"a": {b"id": get_node_id()},
+        b"a": {b"id": bytes(get_node_id())},
         b"v": b"TEST",
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = unbencode(reply)
     expand_ip(msg)
+    expand_id(msg)
     pprint(msg)
 
 
@@ -62,7 +64,7 @@ def get_peers(
         b"y": b"q",
         b"q": b"get_peers",
         b"a": {
-            b"id": get_node_id(),
+            b"id": bytes(get_node_id()),
             b"info_hash": infohash,
         },
         b"v": b"TEST",
@@ -78,6 +80,7 @@ def get_peers(
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = unbencode(reply)
     expand_ip(msg)
+    expand_id(msg)
     expand_nodes(msg)
     expand_values(msg)
     pprint(msg)
@@ -91,26 +94,27 @@ def error(addr: InetAddr, timeout: float) -> None:
         b"t": gen_transaction_id(),
         b"y": b"q",
         b"q": b"poke",
-        b"a": {b"id": get_node_id()},
+        b"a": {b"id": bytes(get_node_id())},
         b"v": b"TEST",
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = unbencode(reply)
     expand_ip(msg)
+    expand_id(msg)
     pprint(msg)
 
 
 @main.command("get-node-id")
 def get_node_id_cmd() -> None:
-    print(get_node_id().hex())
+    print(get_node_id())
 
 
 @main.command("set-node-id")
 @click.option("--ip", type=IPv4Address)
 def set_node_id_cmd(ip: IPv4Address | None) -> None:
     if ip is None:
-        node_id = random.randbytes(20)
+        node_id = NodeId(random.randbytes(20))
     else:
         ba = bytearray(ip.packed)
         ba[0] &= 0x03
@@ -126,8 +130,8 @@ def set_node_id_cmd(ip: IPv4Address | None) -> None:
         node_id0.append(((crc >> 8) & 0xF8) | random.randrange(8))
         node_id0.extend(random.randbytes(16))
         node_id0.append(rand)
-        node_id = bytes(node_id0)
-    print(node_id.hex())
+        node_id = NodeId(bytes(node_id0))
+    print(node_id)
     set_node_id(node_id)
 
 
