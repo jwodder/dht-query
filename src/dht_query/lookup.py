@@ -9,7 +9,7 @@ from anyio.abc import AsyncResource, UDPSocket
 from .bencode import UnbencodeError, bencode, unbencode
 from .consts import DEFAULT_TIMEOUT
 from .types import InetAddr, Node
-from .util import expand_nodes, expand_values, gen_transaction_id, get_node_id
+from .util import expand_nodes, expand_values, gen_transaction_id, get_node_id, quantify
 
 DEFAULT_BOOTSTRAP_NODE = InetAddr(host="router.bittorrent.com", port=6881)
 
@@ -35,9 +35,9 @@ class Lookup:
                 self.bootstrap_node, self.info_hash, timeout=self.timeout
             )
             log.info(
-                "Bootstrap node returned %d peer(s) and %d node(s)",
-                len(r.peers),
-                len(r.nodes),
+                "Bootstrap node returned %s and %s",
+                quantify(len(r.peers), "peer"),
+                quantify(len(r.nodes), "node"),
             )
             peer_set.update(r.peers)
             nodes.extend(r.nodes)
@@ -65,9 +65,9 @@ class Lookup:
                     )
                 else:
                     log.info(
-                        "Node returned %d peer(s) and %d node(s)",
-                        len(r.peers),
-                        len(r.nodes),
+                        "Node returned %s and %s",
+                        quantify(len(r.peers), "peer"),
+                        quantify(len(r.nodes), "node"),
                     )
                     peer_set.update(r.peers)
                     nodes.extend(r.nodes)

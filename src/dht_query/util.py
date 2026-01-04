@@ -86,3 +86,13 @@ def set_node_id(bs: bytes) -> None:
     p = node_id_file()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(bs)
+
+
+def quantify(qty: int, singular: str, plural: str | None = None) -> str:
+    # cf. the humanfriendly package's pluralize() function
+    if qty == 1:
+        return f"{qty} {singular}"
+    elif plural is None:
+        return f"{qty} {singular}s"
+    else:
+        return f"{qty} {plural}"
