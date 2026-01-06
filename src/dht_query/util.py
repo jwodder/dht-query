@@ -1,5 +1,6 @@
 from __future__ import annotations
 from collections.abc import Iterator
+import contextlib
 from pathlib import Path
 import random
 from typing import Any
@@ -12,86 +13,77 @@ def gen_transaction_id() -> bytes:
     return random.randbytes(TRANSACTION_ID_LEN)
 
 
-def expand_ip(msg: dict[bytes, Any]) -> None:
-    if (addr := msg.get(b"ip")) is not None and isinstance(addr, bytes):
-        try:
-            msg[b"ip"] = InetAddr.from_compact(addr)
-        except ValueError:
-            pass
-
-
-def expand_id(msg: dict[bytes, Any], strict: bool = False) -> None:
-    if (bs := msg.get(b"r", {}).get(b"id")) is not None:
-        if isinstance(bs, bytes):
-            try:
-                nid = NodeId(bs)
-            except ValueError:
-                if strict:
-                    raise
-                else:
-                    pass
-            else:
-                msg[b"r"][b"id"] = nid
+def convert_reply(raw: dict[bytes, Any], strict: bool = False) -> dict[str, Any]:
+    msg = strify_keys(raw)
+    if (addr := msg.get("ip")) is not None and isinstance(addr, bytes):
+        with maybe_strict(strict):
+            msg["ip"] = InetAddr.from_compact(addr)
+    if r := msg.get("r"):
+        if isinstance(r, dict):
+            if (bs := r.get("id")) is not None:
+                if isinstance(bs, bytes):
+                    with maybe_strict(strict):
+                        r["id"] = NodeId(bs)
+                elif strict:
+                    raise TypeError(f"r.id is {type(bs).__name__} instead of bytes")
+            if (bs := r.get("nodes")) is not None:
+                if isinstance(bs, bytes):
+                    with maybe_strict(strict):
+                        r["nodes"] = [Node.from_compact(n) for n in split_bytes(bs, 26)]
+                elif strict:
+                    raise TypeError(f"r.nodes is {type(bs).__name__} instead of bytes")
+            if (bs := r.get("nodes6")) is not None:
+                if isinstance(bs, bytes):
+                    with maybe_strict(strict):
+                        r["nodes6"] = [
+                            Node.from_compact(n) for n in split_bytes(bs, 38)
+                        ]
+                elif strict:
+                    raise TypeError(f"r.nodes6 is {type(bs).__name__} instead of bytes")
+            if (lst := r.get("values")) is not None:
+                if isinstance(lst, list):
+                    with maybe_strict(strict):
+                        r["values"] = [InetAddr.from_compact(v) for v in lst]
+                elif strict:
+                    raise TypeError(f"r.values is {type(lst).__name__} instead of list")
+            if (bs := r.get("samples")) is not None:
+                if isinstance(bs, bytes):
+                    with maybe_strict(strict):
+                        r["samples"] = [InfoHash(ih) for ih in split_bytes(bs, 20)]
+                elif strict:
+                    raise TypeError(
+                        f"r.samples is {type(bs).__name__} instead of bytes"
+                    )
         elif strict:
-            raise TypeError(f"r.id is {type(bs).__name__} instead of bytes")
-
-
-def expand_nodes(msg: dict[bytes, Any], strict: bool = False) -> None:
-    if (bs := msg.get(b"r", {}).get(b"nodes")) is not None:
-        if isinstance(bs, bytes):
-            try:
-                nodes = [Node.from_compact(n) for n in split_bytes(bs, 26)]
-            except ValueError:
-                if strict:
-                    raise
-                else:
-                    pass
-            else:
-                msg[b"r"][b"nodes"] = nodes
+            raise TypeError(f"r is {type(r).__name__} instead of dict")
+    if (y := msg.get("y")) is not None:
+        if isinstance(y, bytes):
+            msg["y"] = y.decode("utf-8", "surrogateescape")
         elif strict:
-            raise TypeError(f"r.nodes is {type(bs).__name__} instead of bytes")
-    if (bs := msg.get(b"r", {}).get(b"nodes6")) is not None:
-        if isinstance(bs, bytes):
-            try:
-                nodes = [Node.from_compact(n) for n in split_bytes(bs, 38)]
-            except ValueError:
-                if strict:
-                    raise
-                else:
-                    pass
-            else:
-                msg[b"r"][b"nodes6"] = nodes
+            raise TypeError(f"y is {type(r).__name__} instead of bytes")
+    if (q := msg.get("q")) is not None:
+        if isinstance(q, bytes):
+            msg["q"] = q.decode("utf-8", "surrogateescape")
         elif strict:
-            raise TypeError(f"r.nodes6 is {type(bs).__name__} instead of bytes")
+            raise TypeError(f"q is {type(r).__name__} instead of bytes")
+    return msg
 
 
-def expand_values(msg: dict[bytes, Any], strict: bool = False) -> None:
-    if (lst := msg.get(b"r", {}).get(b"values")) is not None:
-        if isinstance(lst, list):
-            try:
-                lst2 = [InetAddr.from_compact(v) for v in lst]
-            except ValueError:
-                pass
-            else:
-                msg[b"r"][b"values"] = lst2
-        elif strict:
-            raise TypeError(f"r.values is {type(lst).__name__} instead of list")
+def strify_keys(d: dict[bytes, Any]) -> dict[str, Any]:
+    d2 = {}
+    for kb, v in d.items():
+        ks = kb.decode("utf-8", "surrogateescape")
+        if isinstance(v, dict):
+            v = strify_keys(v)
+        d2[ks] = v
+    return d2
 
 
-def expand_samples(msg: dict[bytes, Any], strict: bool = False) -> None:
-    if (bs := msg.get(b"r", {}).get(b"samples")) is not None:
-        if isinstance(bs, bytes):
-            try:
-                samples = [InfoHash(ih) for ih in split_bytes(bs, 20)]
-            except ValueError:
-                if strict:
-                    raise
-                else:
-                    pass
-            else:
-                msg[b"r"][b"samples"] = samples
-        elif strict:
-            raise TypeError(f"r.samples is {type(bs).__name__} instead of bytes")
+def maybe_strict(strict: bool) -> contextlib.AbstractContextManager[None]:
+    if strict:
+        return contextlib.suppress(ValueError)
+    else:
+        return contextlib.nullcontext()
 
 
 def split_bytes(bs: bytes, size: int) -> Iterator[bytes]:

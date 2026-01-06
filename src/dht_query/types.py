@@ -138,10 +138,10 @@ class NodeId:
 class InfoHash:
     def __init__(self, info_hash: str | bytes) -> None:
         if isinstance(info_hash, str):
-            ih = bytes.fromhex(info_hash)
-        if len(ih) != 20:
+            info_hash = bytes.fromhex(info_hash)
+        if len(info_hash) != 20:
             raise ValueError("info hashes must be 20 bytes (40 hex chars) long")
-        self.hash: bytes = ih
+        self.hash: bytes = info_hash
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, InfoHash):

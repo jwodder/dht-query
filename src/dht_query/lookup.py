@@ -9,7 +9,7 @@ from anyio.abc import AsyncResource, UDPSocket
 from .bencode import UnbencodeError, bencode, unbencode
 from .consts import DEFAULT_TIMEOUT
 from .types import InetAddr, InfoHash, Node, NodeId
-from .util import expand_nodes, expand_values, gen_transaction_id, get_node_id, quantify
+from .util import convert_reply, gen_transaction_id, get_node_id, quantify
 
 DEFAULT_BOOTSTRAP_NODE = InetAddr(host="router.bittorrent.com", port=6881)
 
@@ -113,24 +113,22 @@ class DhtClient(AsyncResource):
             b"ro": 1,
         }
         reply = await self.chat(addr, bencode(query), timeout=timeout)
-        msg = unbencode(reply)
-        match msg.get(b"y"):
-            case b"r":
-                if msg.get(b"t") != txn_id:
+        msg = convert_reply(unbencode(reply), strict=True)
+        match msg.get("y"):
+            case "r":
+                if msg.get("t") != txn_id:
                     raise DhtProtoError(
                         "Node replied with different transaction ID than was in query"
                     )
-                expand_nodes(msg, strict=True)
-                expand_values(msg, strict=True)
-                peers = msg.get(b"r", {}).get(b"values", [])
+                peers = msg.get("r", {}).get("values", [])
                 assert isinstance(peers, list)
-                nodes4 = msg.get(b"r", {}).get(b"nodes", [])
+                nodes4 = msg.get("r", {}).get("nodes", [])
                 assert isinstance(nodes4, list)
-                nodes6 = msg.get(b"r", {}).get(b"nodes6", [])
+                nodes6 = msg.get("r", {}).get("nodes6", [])
                 assert isinstance(nodes6, list)
                 return GetPeersResponse(peers=peers, nodes=nodes4 + nodes6)
-            case b"e":
-                elst = msg.get(b"e", [])
+            case "e":
+                elst = msg.get("e", [])
                 raise DhtProtoError(f"Node replied with error message: {elst!r}")
             case other:
                 raise DhtProtoError(

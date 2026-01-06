@@ -1,13 +1,18 @@
-- `lookup`: Add an option to stop iff a certain number of total peers are found?
+- `lookup`: Add an option to stop iff a certain number of total peers are
+  found?
 - `lookup`: Implement a "give up" condition so we don't run forever if there
   aren't any peers?
 - Add a multi-query node ID lookup command that implements the node lookup
   described by the Kademlia paper
 - Add a command for checking whether a given node ID+IP pair is BEP
   42-compliant
-    - Give `get-node-id` an `--ip IP` option to make it also check whether our
-      node ID is compliant?
 - Add an `announce-peer` command?
+
+- Replace `set-node-id` with a `gen-node-id [--ip IP]` command and make
+  `set-node-id` take an ID to use?
+    - Also give `set-node-id` a `--generate` option to automatically combine
+      the two commands?
+
 - Give single-packet commands a `--json` option for outputting JSON?
     - Represent bytes fields as hexadecimal
     - Represent `InetAddr` values as `HOST:PORT` strings?
@@ -20,6 +25,7 @@
     - Separate options for IPv4 and IPv6?
 - Add options for setting the local IPv4 & IPv6 addresses to use?
 - Store inet options (and timeout) in a config file?
+    - Support setting the node ID in the config file as well?
 
 - Support BEP 33?
 - Support BEP 44 commands?

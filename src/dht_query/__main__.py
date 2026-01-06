@@ -16,11 +16,7 @@ from .consts import DEFAULT_TIMEOUT, UDP_PACKET_LEN
 from .lookup import DEFAULT_SIMILARITY_TARGET, Lookup
 from .types import InetAddr, InfoHash, NodeId
 from .util import (
-    expand_id,
-    expand_ip,
-    expand_nodes,
-    expand_samples,
-    expand_values,
+    convert_reply,
     gen_transaction_id,
     get_node_id,
     set_node_id,
@@ -143,9 +139,7 @@ def ping(addr: InetAddr, timeout: float) -> None:
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
-    msg = unbencode(reply)
-    expand_ip(msg)
-    expand_id(msg)
+    msg = convert_reply(unbencode(reply))
     pprint(msg)
 
 
@@ -177,11 +171,7 @@ def get_peers(
             want.append(b"n6")
         query[b"a"][b"want"] = want
     reply = chat(addr, bencode(query), timeout=timeout)
-    msg = unbencode(reply)
-    expand_ip(msg)
-    expand_id(msg)
-    expand_nodes(msg)
-    expand_values(msg)
+    msg = convert_reply(unbencode(reply))
     pprint(msg)
 
 
@@ -213,10 +203,7 @@ def find_node(
             want.append(b"n6")
         query[b"a"][b"want"] = want
     reply = chat(addr, bencode(query), timeout=timeout)
-    msg = unbencode(reply)
-    expand_ip(msg)
-    expand_id(msg)
-    expand_nodes(msg)
+    msg = convert_reply(unbencode(reply))
     pprint(msg)
 
 
@@ -237,11 +224,7 @@ def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
-    msg = unbencode(reply)
-    expand_ip(msg)
-    expand_id(msg)
-    expand_nodes(msg)
-    expand_samples(msg)
+    msg = convert_reply(unbencode(reply))
     pprint(msg)
 
 
@@ -258,9 +241,7 @@ def error(addr: InetAddr, timeout: float) -> None:
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
-    msg = unbencode(reply)
-    expand_ip(msg)
-    expand_id(msg)
+    msg = convert_reply(unbencode(reply))
     pprint(msg)
 
 
