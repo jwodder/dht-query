@@ -13,7 +13,7 @@ import click
 import colorlog
 from .bencode import bencode, unbencode
 from .consts import CLIENT, DEFAULT_TIMEOUT, UDP_PACKET_LEN
-from .lookup import DEFAULT_BOOTSTRAP_NODE, DEFAULT_SIMILARITY_TARGET, Lookup
+from .search_peers import DEFAULT_BOOTSTRAP_NODE, DEFAULT_SIMILARITY_TARGET, SearchPeers
 from .types import InetAddr, InfoHash, NodeId
 from .util import (
     convert_reply,
@@ -327,7 +327,7 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
     set_node_id(node_id)
 
 
-@main.command("lookup")
+@main.command()
 @click.option(
     "-a",
     "--all-peers",
@@ -369,7 +369,7 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
     show_default=True,
 )
 @click.argument("info_hash", type=InfoHashParam())
-def lookup_cmd(
+def search_peers(
     info_hash: InfoHash,
     outfile: IO[str],
     timeout: float,
@@ -394,14 +394,14 @@ def lookup_cmd(
         level=logging.DEBUG,
         stream=sys.stderr,
     )
-    lkp = Lookup(
+    search = SearchPeers(
         info_hash=info_hash,
         timeout=timeout,
         similarity_target=similarity,
         all_peers=all_peers,
         bootstrap_node=bootstrap_node,
     )
-    peers = anyio.run(lkp.run)
+    peers = anyio.run(search.run)
     with outfile:
         for p in sorted(peers):
             print(p, file=outfile)

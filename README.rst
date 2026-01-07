@@ -131,12 +131,32 @@ The ``--want4`` and/or ``--want6`` options can be supplied to explicitly
 request IPv4 and/or IPv6 nodes from the remote node regardless of which IP
 version we're communicating over.
 
-``lookup``
-----------
+``ping``
+--------
 
 ::
 
-    dht-query lookup [<options>] <info-hash>
+    dht-query ping [-t <timeout>] <host>:<port>
+
+Send a "ping" query to the given node and pretty-print the decoded response.
+
+``sample-infohashes``
+---------------------
+
+::
+
+    dht-query sample-infohashes [-t <timeout>] <host>:<port> <node-id>
+
+Send a "sample_infohashes" query to the given node and pretty-print the decoded
+response.  The ``<node-id>`` argument is used in the query as the "target"
+field for searching the node ID space at the same time.
+
+``search-peers``
+----------------
+
+::
+
+    dht-query search-peers [<options>] <info-hash>
 
 Perform a simple multiquery search for peers downloading the torrent with the
 given infohash.  An initial "get_peers" query is sent to a bootstrap node, and
@@ -168,26 +188,6 @@ Options
 -t TIMEOUT, --timeout TIMEOUT
                                 Specify the maximum number of seconds to wait
                                 for a reply to a query [default: 15]
-
-``ping``
---------
-
-::
-
-    dht-query ping [-t <timeout>] <host>:<port>
-
-Send a "ping" query to the given node and pretty-print the decoded response.
-
-``sample-infohashes``
----------------------
-
-::
-
-    dht-query sample-infohashes [-t <timeout>] <host>:<port> <node-id>
-
-Send a "sample_infohashes" query to the given node and pretty-print the decoded
-response.  The ``<node-id>`` argument is used in the query as the "target"
-field for searching the node ID space at the same time.
 
 ``set-node-id``
 ---------------

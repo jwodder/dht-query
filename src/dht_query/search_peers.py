@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class Lookup:
+class SearchPeers:
     info_hash: InfoHash
     timeout: float = DEFAULT_TIMEOUT
     similarity_target: int = DEFAULT_SIMILARITY_TARGET
