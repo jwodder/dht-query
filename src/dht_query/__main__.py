@@ -19,6 +19,7 @@ from .util import (
     convert_reply,
     gen_transaction_id,
     get_node_id,
+    jsonify,
     set_node_id,
 )
 
@@ -150,6 +151,7 @@ def main() -> None:
 
 
 @main.command()
+@click.option("-J", "--json", is_flag=True, help="Display response as JSON")
 @click.option(
     "-t",
     "--timeout",
@@ -159,7 +161,7 @@ def main() -> None:
     show_default=True,
 )
 @click.argument("addr", type=InetAddrParam())
-def ping(addr: InetAddr, timeout: float) -> None:
+def ping(addr: InetAddr, timeout: float, json: bool) -> None:
     """Send a "ping" query to a node and pretty-print the decoded response"""
     query = {
         b"t": gen_transaction_id(),
@@ -171,10 +173,14 @@ def ping(addr: InetAddr, timeout: float) -> None:
     }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
-    pprint(msg)
+    if json:
+        print(jsonify(msg))
+    else:
+        pprint(msg)
 
 
 @main.command()
+@click.option("-J", "--json", is_flag=True, help="Display response as JSON")
 @click.option(
     "-t",
     "--timeout",
@@ -188,7 +194,12 @@ def ping(addr: InetAddr, timeout: float) -> None:
 @click.argument("addr", type=InetAddrParam())
 @click.argument("info_hash", type=InfoHashParam())
 def get_peers(
-    addr: InetAddr, info_hash: InfoHash, timeout: float, want4: bool, want6: bool
+    addr: InetAddr,
+    info_hash: InfoHash,
+    timeout: float,
+    json: bool,
+    want4: bool,
+    want6: bool,
 ) -> None:
     """Send a "get_peers" query to a node and pretty-print the decoded response"""
     query: dict[bytes, Any] = {
@@ -211,10 +222,14 @@ def get_peers(
         query[b"a"][b"want"] = want
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
-    pprint(msg)
+    if json:
+        print(jsonify(msg))
+    else:
+        pprint(msg)
 
 
 @main.command()
+@click.option("-J", "--json", is_flag=True, help="Display response as JSON")
 @click.option(
     "-t",
     "--timeout",
@@ -228,7 +243,12 @@ def get_peers(
 @click.argument("addr", type=InetAddrParam())
 @click.argument("node_id", type=NodeIdParam())
 def find_node(
-    addr: InetAddr, node_id: NodeId, timeout: float, want4: bool, want6: bool
+    addr: InetAddr,
+    node_id: NodeId,
+    timeout: float,
+    json: bool,
+    want4: bool,
+    want6: bool,
 ) -> None:
     """Send a "find_node" query to a node and pretty-print the decoded response"""
     query: dict[bytes, Any] = {
@@ -251,10 +271,14 @@ def find_node(
         query[b"a"][b"want"] = want
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
-    pprint(msg)
+    if json:
+        print(jsonify(msg))
+    else:
+        pprint(msg)
 
 
 @main.command()
+@click.option("-J", "--json", is_flag=True, help="Display response as JSON")
 @click.option(
     "-t",
     "--timeout",
@@ -268,7 +292,12 @@ def find_node(
 @click.argument("port", type=int)
 @click.argument("token", type=BytesParam())
 def announce_peer(
-    addr: InetAddr, info_hash: InfoHash, port: int, token: bytes, timeout: float
+    addr: InetAddr,
+    info_hash: InfoHash,
+    port: int,
+    token: bytes,
+    timeout: float,
+    json: bool,
 ) -> None:
     """Send an "announce_peer" query to a node and pretty-print the decoded response"""
     query: dict[bytes, Any] = {
@@ -286,10 +315,14 @@ def announce_peer(
     }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
-    pprint(msg)
+    if json:
+        print(jsonify(msg))
+    else:
+        pprint(msg)
 
 
 @main.command()
+@click.option("-J", "--json", is_flag=True, help="Display response as JSON")
 @click.option(
     "-t",
     "--timeout",
@@ -300,7 +333,9 @@ def announce_peer(
 )
 @click.argument("addr", type=InetAddrParam())
 @click.argument("target", type=NodeIdParam())
-def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
+def sample_infohashes(
+    addr: InetAddr, target: NodeId, timeout: float, json: bool
+) -> None:
     """
     Send a "sample_infohashes" query to a node and pretty-print the decoded
     response
@@ -318,10 +353,14 @@ def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
     }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
-    pprint(msg)
+    if json:
+        print(jsonify(msg))
+    else:
+        pprint(msg)
 
 
 @main.command()
+@click.option("-J", "--json", is_flag=True, help="Display response as JSON")
 @click.option(
     "-t",
     "--timeout",
@@ -331,7 +370,7 @@ def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
     show_default=True,
 )
 @click.argument("addr", type=InetAddrParam())
-def error(addr: InetAddr, timeout: float) -> None:
+def error(addr: InetAddr, timeout: float, json: bool) -> None:
     """
     Send a query with an invalid method to a node and pretty-print the decoded
     response
@@ -346,7 +385,10 @@ def error(addr: InetAddr, timeout: float) -> None:
     }
     reply = chat(addr, bencode(query), timeout=timeout)
     msg = convert_reply(unbencode(reply))
-    pprint(msg)
+    if json:
+        print(jsonify(msg))
+    else:
+        pprint(msg)
 
 
 @main.command("get-node-id")

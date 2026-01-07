@@ -69,9 +69,15 @@ macOS    ``~/Library/Application Support/dht-query/node-id.dat``
 Windows  ``%USERPROFILE%\AppData\Local\jwodder\dht-query\node-id.dat``
 =======  =============================================================
 
-All query methods take an optional ``-t``/``--timeout`` option for giving the
+All query commands take an optional ``-t``/``--timeout`` option for giving the
 maximum amount of time in seconds to wait for a reply to a query.  The default
 timeout is 15 seconds.
+
+The query commands that exchange a single query & response pretty-print their
+responses using the ``pprint`` module by default.  If the ``-J``/``--json``
+option is supplied to one of these commands, the response will instead be
+printed as JSON, with unstructured binary strings rendered as hexadecimal
+strings.
 
 In the below command synopses, different types of arguments are represented as
 follows:
@@ -95,7 +101,7 @@ follows:
 
 ::
 
-    dht-query announce-peer [-t <timeout>] <host>:<port> <info-hash> <port> <token>
+    dht-query announce-peer [-J] [-t <timeout>] <host>:<port> <info-hash> <port> <token>
 
 Send an "announce_peer" query for the given info hash to the given node and
 pretty-print the decoded response.  The ``<port>`` argument is the port of the
@@ -108,7 +114,7 @@ remote node, specified on the command line in hexadecimal.
 
 ::
 
-    dht-query error [-t <timeout>] <host>:<port>
+    dht-query error [-J] [-t <timeout>] <host>:<port>
 
 Send a query with an invalid method to the given node to see how it reacts.
 
@@ -116,7 +122,7 @@ Send a query with an invalid method to the given node to see how it reacts.
 -------------
 ::
 
-    dht-query find-node [-t <timeout>] [--want4] [--want6] <host>:<port> <node-id>
+    dht-query find-node [-J] [-t <timeout>] [--want4] [--want6] <host>:<port> <node-id>
 
 Send a "find_node" query for the given node ID to the given node and
 pretty-print the decoded response.
@@ -139,7 +145,7 @@ Print out the locally-stored node ID in hexadecimal.
 
 ::
 
-    dht-query get-peers [-t <timeout>] [--want4] [--want6] <host>:<port> <info-hash>
+    dht-query get-peers [-J] [-t <timeout>] [--want4] [--want6] <host>:<port> <info-hash>
 
 Send a "get_peers" query for the given info hash to the given node and
 pretty-print the decoded response.
@@ -153,7 +159,7 @@ version we're communicating over.
 
 ::
 
-    dht-query ping [-t <timeout>] <host>:<port>
+    dht-query ping [-J] [-t <timeout>] <host>:<port>
 
 Send a "ping" query to the given node and pretty-print the decoded response.
 
@@ -162,7 +168,7 @@ Send a "ping" query to the given node and pretty-print the decoded response.
 
 ::
 
-    dht-query sample-infohashes [-t <timeout>] <host>:<port> <node-id>
+    dht-query sample-infohashes [-J] [-t <timeout>] <host>:<port> <node-id>
 
 Send a "sample_infohashes" query to the given node and pretty-print the decoded
 response.  The ``<node-id>`` argument is used in the query as the "target"

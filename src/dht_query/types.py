@@ -89,6 +89,9 @@ class InetAddr:
             assert isinstance(self.host, IPv6Address)
             return (socket.AF_INET6, str(self.host), self.port)
 
+    def for_json(self) -> str:
+        return str(self)
+
 
 @dataclass
 class Node:
@@ -106,6 +109,9 @@ class Node:
     @property
     def address(self) -> InetAddr:
         return InetAddr(host=self.ip, port=self.port)
+
+    def for_json(self) -> dict[str, str | int]:
+        return {"id": str(self.id), "ip": str(self.ip), "port": self.port}
 
 
 class NodeId:
@@ -134,6 +140,9 @@ class NodeId:
     def __repr__(self) -> str:
         return f"NodeId({self.id.hex()!r})"
 
+    def for_json(self) -> str:
+        return str(self)
+
 
 class InfoHash:
     def __init__(self, info_hash: str | bytes) -> None:
@@ -161,6 +170,9 @@ class InfoHash:
     def __repr__(self) -> str:
         return f"InfoHash({self.hash.hex()!r})"
 
+    def for_json(self) -> str:
+        return str(self)
+
 
 class PrettyBytes:
     def __init__(self, value: bytes) -> None:
@@ -183,3 +195,6 @@ class PrettyBytes:
 
     def __repr__(self) -> str:
         return f"bytes.fromhex({self.value.hex()!r})"
+
+    def for_json(self) -> str:
+        return str(self)

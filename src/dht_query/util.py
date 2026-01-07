@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterator
 import contextlib
+import json
 from pathlib import Path
 import random
 from typing import Any
@@ -130,3 +131,16 @@ def quantify(qty: int, singular: str, plural: str | None = None) -> str:
         return f"{qty} {singular}s"
     else:
         return f"{qty} {plural}"
+
+
+def jsonify(obj: Any) -> str:
+    return json.dumps(obj, indent=4, default=for_json)
+
+
+def for_json(obj: Any) -> Any:
+    if hasattr(obj, "for_json"):
+        return obj.for_json()
+    elif isinstance(obj, bytes):
+        return obj.hex()
+    else:
+        raise TypeError(type(obj).__name__)
