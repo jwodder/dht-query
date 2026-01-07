@@ -15,7 +15,8 @@ authors = [
 ]
 
 keywords = [
-    ###
+    "bittorrent",
+    "dht",
 ]
 
 classifiers = [
@@ -29,7 +30,8 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
-    ###
+    "Environment :: Console",
+    "Topic :: Communications :: File Sharing",
     "Typing :: Typed",
 ]
 

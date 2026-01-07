@@ -32,5 +32,3 @@
 - Support BEP 44 commands?
     - For "put", this would mean letting the user specify a bencoded data
       value.  How should that be supplied?  Read from a given bencoded file?
-
-- Fill in keywords & classifiers
