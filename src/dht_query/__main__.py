@@ -278,9 +278,9 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
 @main.command("lookup")
 @click.option("-a", "--all-peers", is_flag=True)
 @click.option("-B", "--bootstrap-node", type=InetAddrParam())
+@click.option("-o", "--outfile", type=click.File("w"), default="-")
 @click.option("-s", "--similarity", type=int, default=DEFAULT_SIMILARITY_TARGET)
 @click.option("-t", "--timeout", type=float, default=DEFAULT_TIMEOUT)
-@click.option("-o", "--outfile", type=click.File("w"), default="-")
 @click.argument("info_hash", type=InfoHashParam())
 def lookup_cmd(
     info_hash: InfoHash,

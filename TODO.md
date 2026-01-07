@@ -11,7 +11,6 @@
 - Give single-packet commands a `-J`/`--json` option for outputting JSON?
     - Represent bytes fields as hexadecimal
     - Represent `InetAddr` values as `HOST:PORT` strings?
-- Debug-log local IP address and UDP port?
 
 - `lookup`: Add an option to stop iff a certain number of total peers are
   found?
@@ -41,9 +40,7 @@
 - Support BEP 44 commands?
     - For "put", this would mean letting the user specify a bencoded data
       value.  How should that be supplied?  Read from a given bencoded file?
-- Support BEP 50?
 
 - Fill out `--help` text
-- Fill out README
 - Put on GitHub?
     - Add a smoke test and CI
