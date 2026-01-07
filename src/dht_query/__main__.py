@@ -12,7 +12,7 @@ import anyio
 import click
 import colorlog
 from .bencode import bencode, unbencode
-from .consts import DEFAULT_TIMEOUT, UDP_PACKET_LEN
+from .consts import CLIENT, DEFAULT_TIMEOUT, UDP_PACKET_LEN
 from .lookup import DEFAULT_SIMILARITY_TARGET, Lookup
 from .types import InetAddr, InfoHash, NodeId
 from .util import (
@@ -135,7 +135,7 @@ def ping(addr: InetAddr, timeout: float) -> None:
         b"y": b"q",
         b"q": b"ping",
         b"a": {b"id": bytes(get_node_id())},
-        b"v": b"TEST",
+        b"v": CLIENT,
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
@@ -160,7 +160,7 @@ def get_peers(
             b"id": bytes(get_node_id()),
             b"info_hash": bytes(info_hash),
         },
-        b"v": b"TEST",
+        b"v": CLIENT,
         b"ro": 1,
     }
     if want4 or want6:
@@ -192,7 +192,7 @@ def find_node(
             b"id": bytes(get_node_id()),
             b"target": bytes(node_id),
         },
-        b"v": b"TEST",
+        b"v": CLIENT,
         b"ro": 1,
     }
     if want4 or want6:
@@ -220,7 +220,7 @@ def sample_infohashes(addr: InetAddr, target: NodeId, timeout: float) -> None:
             b"id": bytes(get_node_id()),
             b"target": bytes(target),
         },
-        b"v": b"TEST",
+        b"v": CLIENT,
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)
@@ -237,7 +237,7 @@ def error(addr: InetAddr, timeout: float) -> None:
         b"y": b"q",
         b"q": b"poke",
         b"a": {b"id": bytes(get_node_id())},
-        b"v": b"TEST",
+        b"v": CLIENT,
         b"ro": 1,
     }
     reply = chat(addr, bencode(query), timeout=timeout)

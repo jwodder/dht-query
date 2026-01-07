@@ -7,7 +7,7 @@ from typing import Any
 from anyio import create_udp_socket, fail_after
 from anyio.abc import AsyncResource, UDPSocket
 from .bencode import UnbencodeError, bencode, unbencode
-from .consts import DEFAULT_TIMEOUT
+from .consts import CLIENT, DEFAULT_TIMEOUT
 from .types import InetAddr, InfoHash, Node, NodeId
 from .util import convert_reply, gen_transaction_id, get_node_id, quantify
 
@@ -109,7 +109,7 @@ class DhtClient(AsyncResource):
                 b"info_hash": bytes(info_hash),
                 b"want": [b"n4", b"n6"],
             },
-            b"v": b"TEST",
+            b"v": CLIENT,
             b"ro": 1,
         }
         reply = await self.chat(addr, bencode(query), timeout=timeout)
