@@ -219,7 +219,7 @@ class Session(AsyncResource):
                         )
                         continue
                     txn_id = bytes(t)
-                    flying = self.in_flight.pop(txn_id)
+                    flying = self.in_flight.pop(txn_id, None)
                     if flying is None or flying[0] != sender:
                         log.debug(
                             "Received reply from %s with unexpected transaction"
