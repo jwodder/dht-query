@@ -51,41 +51,40 @@ class SearchPeers:
         peers = set()
         async with await self.create_session(get_node_id()) as s:
             for addr in self.bootstrap:
-                log.info('Issuing "get_peers" query to %s ...', describe(addr))
-                await s.query(addr, self.info_hash)
+                bn = BootstrapNode(addr)
+                log.info('Issuing "get_peers" query to %s ...', bn)
+                await s.query(bn, self.info_hash)
             while s.has_active_txns():
                 match await s.next_event():
                     case Timeout(node):
-                        log.info("Query to %s timed out", describe(node))
+                        log.warning("Query to %s timed out", node)
                     case GetPeersResponse() as r:
                         log.info(
                             "%s returned %s and %s",
-                            describe(r.sender).capitalize(),
+                            str(r.sender).capitalize(),
                             quantify(len(r.peers), "peer"),
                             quantify(len(r.nodes), "node"),
                         )
                         peers.update(r.peers)
                         nodes.extend(r.nodes)
                     case ErrorReply(sender, code, msg):
-                        log.info(
-                            "%s replies with error message: code %d: %r",
-                            describe(sender).capitalize(),
+                        log.warning(
+                            "%s replied with error message: code %d: %r",
+                            str(sender).capitalize(),
                             code,
                             msg,
                         )
                     case BadMessage(sender, about):
                         log.warning(
                             "%s sent invalid DHT message: %s",
-                            # TODO: Either don't use `describe()` here or else
-                            # revamp the address-to-node mapping system:
-                            describe(sender).capitalize(),
+                            str(sender).capitalize(),
                             about,
                         )
                     case FatalError(e):
                         raise e
                 for n in nodes.closest(self.closest):
                     if n.address not in s.queried:
-                        log.info('Issuing "get_peers" query to %s ...', describe(n))
+                        log.info('Issuing "get_peers" query to %s ...', n)
                         await s.query(n, self.info_hash)
         return peers
 
@@ -101,10 +100,13 @@ class Session(AsyncResource):
     event_receiver: MemoryObjectReceiveStream[Message | Timeout | FatalError]
     event_sender: MemoryObjectSendStream[Message | Timeout | FatalError]
     txn_counter: int = field(init=False, default=0)
-    in_flight: dict[bytes, tuple[InetAddr, Node | InetAddr, asyncio.Task[None]]] = (
-        field(init=False, default_factory=dict)
+    in_flight: dict[bytes, tuple[InetAddr, asyncio.Task[None]]] = field(
+        init=False, default_factory=dict
     )
     queried: set[InetAddr] = field(init=False, default_factory=set)
+    addr2node: dict[InetAddr, Node | BootstrapNode] = field(
+        init=False, default_factory=dict
+    )
 
     def __post_init__(self) -> None:
         self.ipv4_recv_task = asyncio.create_task(
@@ -116,7 +118,7 @@ class Session(AsyncResource):
 
     async def aclose(self) -> None:
         outstanding = []
-        for _, _, t in self.in_flight.values():
+        for _, t in self.in_flight.values():
             t.cancel()
             outstanding.append(t)
         self.ipv4_recv_task.cancel()
@@ -135,7 +137,7 @@ class Session(AsyncResource):
         self.txn_counter = (self.txn_counter + 1) & 0xFF_FF_FF_FF
         return t.to_bytes(4, "big")
 
-    async def query(self, sendto: Node | InetAddr, info_hash: InfoHash) -> None:
+    async def query(self, sendto: Node | BootstrapNode, info_hash: InfoHash) -> None:
         txn_id = self.gen_transaction_id()
         query: dict[bytes, Any] = {
             b"t": txn_id,
@@ -154,8 +156,9 @@ class Session(AsyncResource):
             addr = sendto.address
             (family, ip, port) = addr.resolve()
         else:
-            (family, ip, port) = sendto.resolve()
+            (family, ip, port) = sendto.address.resolve()
             addr = InetAddr.from_pair(ip, port)
+        self.addr2node[addr] = sendto
         if family is socket.AF_INET:
             s = self.ipv4
         else:
@@ -167,7 +170,7 @@ class Session(AsyncResource):
                 Timeout(sendto, txn_id), self.search.timeout, self.event_sender.clone()
             )
         )
-        self.in_flight[txn_id] = (addr, sendto, task)
+        self.in_flight[txn_id] = (addr, task)
         await s.sendto(msg, ip, port)
 
     async def next_event(
@@ -180,64 +183,81 @@ class Session(AsyncResource):
                     self.in_flight.pop(tm.txn_id)
                     return tm
                 case Message(sender, content):
+                    full_sender = self.addr2node.get(sender)
+                    if full_sender is None:
+                        log.debug(
+                            "Message received from unknown address %s; ignoring",
+                            sender,
+                        )
+                        continue
                     try:
                         msg = convert_reply(unbencode(content), strict=True)
-                    except ValueError as e:
-                        return BadMessage(
-                            sender=sender, about=f"failed to deserialize message: {e}"
+                    except (TypeError, ValueError) as e:
+                        log.debug(
+                            "Received message from %s that could not be"
+                            " deserialized: %s; ignoring",
+                            full_sender,
+                            e,
                         )
-                    if msg.get("y") == "q":
-                        log.debug("Received query message from %s; ignoring", sender)
+                        continue
+                    y = msg.get("y")
+                    if y == "q":
+                        log.debug(
+                            "Received query message from %s; ignoring", full_sender
+                        )
+                        continue
+                    elif y != "r" and y != "e":
+                        log.debug(
+                            "Received unexpected message type %r from %s; ignoring",
+                            y,
+                            full_sender,
+                        )
                         continue
                     t = msg.get("t")
                     if t is None:
-                        return BadMessage(
-                            sender=sender, about="no transaction ID in message"
+                        log.debug(
+                            "Received reply from %s without transaction ID; ignoring",
+                            full_sender,
                         )
+                        continue
                     txn_id = bytes(t)
                     flying = self.in_flight.pop(txn_id)
                     if flying is None or flying[0] != sender:
-                        log.warning(
-                            "Received unexpected UDP packet from %s; ignoring",
-                            sender,
+                        log.debug(
+                            "Received reply from %s with unexpected transaction"
+                            " ID; ignoring",
+                            full_sender,
                         )
                         if flying is not None:
                             self.in_flight[txn_id] = flying
                         continue
-                    (_, full_sender, task) = flying
+                    (_, task) = flying
                     task.cancel()
-                    match msg.get("y"):
-                        case "r":
-                            peers = msg.get("r", {}).get("values", [])
-                            assert isinstance(peers, list)
-                            nodes4 = msg.get("r", {}).get("nodes", [])
-                            assert isinstance(nodes4, list)
-                            nodes6 = msg.get("r", {}).get("nodes6", [])
-                            assert isinstance(nodes6, list)
-                            return GetPeersResponse(
-                                sender=full_sender, peers=peers, nodes=nodes4 + nodes6
-                            )
-                        case "e":
-                            elst = msg.get("e", [])
-                            if (
-                                len(elst) >= 2
-                                and isinstance(elst[0], int)
-                                and isinstance(elst[1], bytes)
-                            ):
-                                code = elst[0]
-                                errmsg = elst[1].decode("utf-8", "surrogateescape")
-                                return ErrorReply(
-                                    sender=full_sender, code=code, msg=errmsg
-                                )
-                            else:
-                                return BadMessage(
-                                    sender=full_sender,
-                                    about="malformed error message",
-                                )
-                        case other:
+                    if y == "r":
+                        peers = msg.get("r", {}).get("values", [])
+                        assert isinstance(peers, list)
+                        nodes4 = msg.get("r", {}).get("nodes", [])
+                        assert isinstance(nodes4, list)
+                        nodes6 = msg.get("r", {}).get("nodes6", [])
+                        assert isinstance(nodes6, list)
+                        return GetPeersResponse(
+                            sender=full_sender, peers=peers, nodes=nodes4 + nodes6
+                        )
+                    else:
+                        elst = msg.get("e", [])
+                        if (
+                            len(elst) >= 2
+                            and isinstance(elst[0], int)
+                            and isinstance(elst[1], bytes)
+                        ):
+                            code = elst[0]
+                            errmsg = elst[1].decode("utf-8", "surrogateescape")
+                            return ErrorReply(sender=full_sender, code=code, msg=errmsg)
+                        else:
+                            # TODO: Merge this into ErrorReply somehow:
                             return BadMessage(
                                 sender=full_sender,
-                                about=f"unexpected message type {other!r}",
+                                about="malformed error message",
                             )
                 case FatalError() as e:
                     return e
@@ -263,22 +283,30 @@ class NodeTable:
 
 
 @dataclass
+class BootstrapNode:
+    address: InetAddr
+
+    def __str__(self) -> str:
+        return f"bootstrap node at {self.address}"
+
+
+@dataclass
 class GetPeersResponse:
-    sender: Node | InetAddr
+    sender: Node | BootstrapNode
     peers: list[InetAddr]
     nodes: list[Node]
 
 
 @dataclass
 class ErrorReply:
-    sender: Node | InetAddr
+    sender: Node | BootstrapNode
     code: int
     msg: str
 
 
 @dataclass
 class Timeout:
-    node: Node | InetAddr
+    node: Node | BootstrapNode
     txn_id: bytes
 
 
@@ -295,20 +323,13 @@ class FatalError:
 
 @dataclass
 class BadMessage:
-    sender: Node | InetAddr
+    sender: Node | BootstrapNode
     about: str
 
 
 def xor_bytes(bs1: bytes, bs2: bytes) -> int:
     bx = bytes([b1 ^ b2 for (b1, b2) in zip(bs1, bs2)])
     return int.from_bytes(bx, "big")
-
-
-def describe(n: Node | InetAddr) -> str:
-    if isinstance(n, Node):
-        return f"node {n.id} at {n.address}"
-    else:
-        return f"bootstrap node at {n}"
 
 
 async def txn_timeout(

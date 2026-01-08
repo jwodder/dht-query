@@ -107,6 +107,9 @@ class Node:
         assert not isinstance(addr.host, str)
         return cls(id=nid, ip=addr.host, port=addr.port)
 
+    def __str__(self) -> str:
+        return f"node {self.id} at {self.address}"
+
     @property
     def address(self) -> InetAddr:
         return InetAddr(host=self.ip, port=self.port)
