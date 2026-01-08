@@ -76,6 +76,8 @@ class SearchPeers:
                     case BadMessage(sender, about):
                         log.warning(
                             "%s sent invalid DHT message: %s",
+                            # TODO: Either don't use `describe()` here or else
+                            # revamp the address-to-node mapping system:
                             describe(sender).capitalize(),
                             about,
                         )
@@ -184,13 +186,15 @@ class Session(AsyncResource):
                         return BadMessage(
                             sender=sender, about=f"failed to deserialize message: {e}"
                         )
+                    if msg.get("y") == "q":
+                        log.debug("Received query message from %s; ignoring", sender)
+                        continue
                     t = msg.get("t")
                     if t is None:
                         return BadMessage(
                             sender=sender, about="no transaction ID in message"
                         )
                     txn_id = bytes(t)
-                    # TODO: Don't pop from in_flight if message is a query
                     flying = self.in_flight.pop(txn_id)
                     if flying is None or flying[0] != sender:
                         log.warning(
@@ -205,8 +209,6 @@ class Session(AsyncResource):
                     match msg.get("y"):
                         case "r":
                             peers = msg.get("r", {}).get("values", [])
-                            # TODO: Instead of asserting, return BadMessage on
-                            # bad types
                             assert isinstance(peers, list)
                             nodes4 = msg.get("r", {}).get("nodes", [])
                             assert isinstance(nodes4, list)
