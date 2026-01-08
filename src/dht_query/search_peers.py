@@ -60,7 +60,7 @@ class SearchPeers:
                     case GetPeersResponse() as r:
                         log.info(
                             "%s returned %s and %s",
-                            describe(r.sender).title(),
+                            describe(r.sender).capitalize(),
                             quantify(len(r.peers), "peer"),
                             quantify(len(r.nodes), "node"),
                         )
@@ -69,22 +69,22 @@ class SearchPeers:
                     case ErrorReply(sender, code, msg):
                         log.info(
                             "%s replies with error message: code %d: %r",
-                            describe(sender).title(),
+                            describe(sender).capitalize(),
                             code,
                             msg,
                         )
                     case BadMessage(sender, about):
                         log.warning(
                             "%s sent invalid DHT message: %s",
-                            describe(sender).title(),
+                            describe(sender).capitalize(),
                             about,
                         )
                     case FatalError(e):
                         raise e
                 for n in nodes.closest(self.closest):
                     if n.address not in s.queried:
-                        log.info('Issuing "get_peers" query to %s ...', describe(addr))
-                        await s.query(addr, self.info_hash)
+                        log.info('Issuing "get_peers" query to %s ...', describe(n))
+                        await s.query(n, self.info_hash)
         return peers
 
 
@@ -99,8 +99,8 @@ class Session(AsyncResource):
     event_receiver: MemoryObjectReceiveStream[Message | Timeout | FatalError]
     event_sender: MemoryObjectSendStream[Message | Timeout | FatalError]
     txn_counter: int = field(init=False, default=0)
-    in_flight: dict[bytes, tuple[Node | InetAddr, asyncio.Task[None]]] = field(
-        init=False, default_factory=dict
+    in_flight: dict[bytes, tuple[InetAddr, Node | InetAddr, asyncio.Task[None]]] = (
+        field(init=False, default_factory=dict)
     )
     queried: set[InetAddr] = field(init=False, default_factory=set)
 
@@ -114,7 +114,7 @@ class Session(AsyncResource):
 
     async def aclose(self) -> None:
         outstanding = []
-        for _, t in self.in_flight.values():
+        for _, _, t in self.in_flight.values():
             t.cancel()
             outstanding.append(t)
         self.ipv4_recv_task.cancel()
@@ -150,9 +150,10 @@ class Session(AsyncResource):
         msg = bencode(query)
         if isinstance(sendto, Node):
             addr = sendto.address
+            (family, ip, port) = addr.resolve()
         else:
-            addr = sendto
-        (family, ip, port) = addr.resolve()
+            (family, ip, port) = sendto.resolve()
+            addr = InetAddr.from_pair(ip, port)
         if family is socket.AF_INET:
             s = self.ipv4
         else:
@@ -164,7 +165,7 @@ class Session(AsyncResource):
                 Timeout(sendto, txn_id), self.search.timeout, self.event_sender.clone()
             )
         )
-        self.in_flight[txn_id] = (sendto, task)
+        self.in_flight[txn_id] = (addr, sendto, task)
         await s.sendto(msg, ip, port)
 
     async def next_event(
@@ -199,12 +200,13 @@ class Session(AsyncResource):
                         if flying is not None:
                             self.in_flight[txn_id] = flying
                         continue
-                    (full_sender, task) = flying
+                    (_, full_sender, task) = flying
                     task.cancel()
-                    await task
                     match msg.get("y"):
                         case "r":
                             peers = msg.get("r", {}).get("values", [])
+                            # TODO: Instead of asserting, return BadMessage on
+                            # bad types
                             assert isinstance(peers, list)
                             nodes4 = msg.get("r", {}).get("nodes", [])
                             assert isinstance(nodes4, list)
