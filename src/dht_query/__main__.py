@@ -441,7 +441,7 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
     "--closest",
     type=int,
     default=DEFAULT_CLOSEST,
-    # TODO: help text
+    help="How many closest nodes to the info hash to query",
     show_default=True,
 )
 @click.option(

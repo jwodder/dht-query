@@ -181,35 +181,33 @@ field for searching the node ID space at the same time.
 
     dht-query search-peers [<options>] <info-hash>
 
-Perform a simple multiquery search for peers downloading the torrent with the
-given info hash.  An initial "get_peers" query is sent to a bootstrap node, and
-then we repeatedly query the closest known node that hasn't yet been queried
-until we get one or more peers from a node whose ID matches the info hash in
-some number of leading bits.  The peers returned from the final response (or
-all peers found if ``-a`` is given) are then printed out in ``<host>:<port>``
-format.
+Perform a multiquery search for peers downloading the torrent with the given
+info hash.  An initial "get_peers" query is sent to a set of bootstrap nodes,
+and then we repeatedly take the ``k`` nodes with IDs closest to the info hash
+and send "get_peers" queries to any that haven't yet been queried.  The process
+ends when there are no outstanding queries or closest nodes to query.
+
+All received peers are printed out in ``<host>:<port>`` format at the end of
+operation.
 
 Options
 ^^^^^^^
 
--a, --all-peers                 Print out all peers found in the process rather
-                                than just those returned in the last response.
-
 -B ADDRESS, --bootstrap-node ADDRESS
                                 Use the node at ``ADDRESS`` (given in
-                                ``<host>:<port>`` format) as the bootstrap
-                                node.  The default bootstrap node is
-                                ``router.bittorrent.com:6881``.
+                                ``<host>:<port>`` format) as a bootstrap node.
+                                This option can be given multiple times.  If no
+                                occurrences of this option are given on the
+                                command line, a built-in set of bootstrap nodes
+                                will be used.
+
+-k INT, --closest INT           How many closest nodes to the info hash to
+                                query [default: 8]
 
 -o FILE, --outfile FILE         Write the found peers to ``FILE`` instead of
                                 standard output
 
--s INT, --similarity INT        Don't stop until we've gotten peers from a node
-                                whose ID matches the target info hash in the
-                                first ``INT`` or more bits [default: 10]
-
--t TIMEOUT, --timeout TIMEOUT
-                                Specify the maximum number of seconds to wait
+-t TIMEOUT, --timeout TIMEOUT   Specify the maximum number of seconds to wait
                                 for a reply to a query [default: 15]
 
 ``set-node-id``
