@@ -246,10 +246,10 @@ class Session(AsyncResource):
                         if (
                             len(elst) >= 2
                             and isinstance(elst[0], int)
-                            and isinstance(elst[1], bytes)
+                            and isinstance(elst[1], str)
                         ):
                             code = elst[0]
-                            errmsg = elst[1].decode("utf-8", "surrogateescape")
+                            errmsg = elst[1]
                             return ErrorReply(sender=full_sender, code=code, msg=errmsg)
                         else:
                             return BadMessage(

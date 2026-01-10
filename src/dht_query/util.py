@@ -62,6 +62,16 @@ def convert_reply(raw: dict[bytes, Any], strict: bool = False) -> dict[str, Any]
                     raise TypeError(f"r.token is {type(r).__name__} instead of bytes")
         elif strict:
             raise TypeError(f"r is {type(r).__name__} instead of dict")
+    if (e := msg.get("e")) is not None:
+        if isinstance(e, list):
+            if len(e) >= 2:
+                bs = e[1]
+                if isinstance(bs, bytes):
+                    e[1] = bs.decode("utf-8", "surrogateescape")
+                elif strict:
+                    raise TypeError(f"e.1 is {type(bs).__name__} instead of bytes")
+        elif strict:
+            raise TypeError(f"e is {type(e).__name__} instead of list")
     if (y := msg.get("y")) is not None:
         if isinstance(y, bytes):
             msg["y"] = y.decode("utf-8", "surrogateescape")
