@@ -426,7 +426,7 @@ def set_node_id_cmd(ip: IPv4Address | IPv6Address | None) -> None:
     "-B",
     "--bootstrap-node",
     type=InetAddrParam(),
-    help="Make the initial query to the given node",
+    help="Make the initial query to the given node.  Can be given multiple times.",
     show_default=True,
     multiple=True,
 )
