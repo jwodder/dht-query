@@ -1,5 +1,5 @@
 import contextlib
-from typing import Any
+from typing import Any, Self
 import pytest
 from pytest import MonkeyPatch
 import dht_query
@@ -17,7 +17,7 @@ class FakeInetAddr:
 
 class FakeNode:
     @classmethod
-    def from_compact(cls, value: bytes):  # type: ignore
+    def from_compact(cls, value: bytes) -> Self:
         return cls(value)
 
     def __init__(self, value: bytes) -> None:
@@ -194,6 +194,55 @@ class TestConvertReply:
             raw = {key: value}
 
         return raw
+
+
+def test_converted_reply_message_pretty_print() -> None:
+    raw = {
+        # compact IP: 4 байта IPv4 + 2 байта порт (network byte order)
+        b"ip": b"\xc0\xa8\x01\x64\x1a\xe1",  # 192.168.1.100:6881
+        # response dictionary
+        b"r": {
+            # node ID (20 bytes, SHA1-like)
+            b"id": b"\x12\x34\x56\x78\x9a\xbc\xde\xf0"
+            b"\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc",
+            # IPv4 nodes (each entry = 26 bytes: 20 id + 4 ip + 2 port)
+            b"nodes": (
+                b"\xaa" * 20
+                + b"\x7f\x00\x00\x01\x1a\xe1"  # 127.0.0.1:6881
+                + b"\xbb" * 20
+                + b"\x08\x08\x08\x08\x1a\xe9"  # 8.8.8.8:6889
+            ),
+            # IPv6 nodes (each entry = 38 bytes: 20 id + 16 ip + 2 port)
+            b"nodes6": (
+                b"\xcc" * 20 + b"\x20\x01\x0d\xb8\x85\xa3\x00\x00"
+                b"\x00\x00\x8a\x2e\x03\x70\x73\x34" + b"\x1a\xe1"
+            ),
+            # peers (compact format: 6 bytes each)
+            b"values": [
+                b"\x5d\xb8\xd8\x22\x1a\xe1",  # 93.184.216.34:6881
+                b"\x34\xd9\x1f\x2a\x1a\xe9",  # 52.217.31.42:6889
+            ],
+            # BEP-51: sample_infohashes (concatenated 20-byte hashes)
+            b"samples": (b"\x01" * 20 + b"\x02" * 20 + b"\x03" * 20),
+            # short-lived opaque token
+            b"token": b"\x9f\x4a\x7c\x21",
+        },
+        # error list (normally absent in successful response, но формат допустим)
+        # [error_code, error_message]
+        b"e": [201, b"Generic Error"],
+        # message type: response
+        b"y": b"r",
+        # query name (обычно отсутствует в response, но иногда логируется)
+        b"q": b"get_peers",
+        # transaction id (1–4 bytes, most often 2)
+        b"t": b"aa",
+    }
+
+    msg = convert_reply(raw)
+    from pprint import pprint
+
+    print()
+    pprint(msg)
 
 
 def test_strify_keys() -> None:
