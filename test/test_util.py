@@ -1,5 +1,5 @@
 import contextlib
-from typing import Any, Self
+from typing import Any, Type, TypeVar
 import pytest
 from pytest import MonkeyPatch
 import dht_query
@@ -15,9 +15,12 @@ class FakeInetAddr:
         self.value = value
 
 
+T = TypeVar("T", bound="FakeNode")
+
+
 class FakeNode:
     @classmethod
-    def from_compact(cls, value: bytes) -> Self:
+    def from_compact(cls: Type[T], value: bytes) -> T:
         return cls(value)
 
     def __init__(self, value: bytes) -> None:
