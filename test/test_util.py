@@ -1,8 +1,7 @@
-import contextlib
-from typing import Any, Type, TypeVar
+from ipaddress import IPv4Address, IPv6Address
+from typing import Any
 import pytest
-from pytest import MonkeyPatch
-import dht_query
+from dht_query.types import InetAddr, InfoHash, Node, NodeId, PrettyBytes
 from dht_query.util import convert_reply, split_bytes, strify_keys
 
 
@@ -10,120 +9,59 @@ class BadType:
     pass
 
 
-class FakeInetAddr:
-    def __init__(self, value: bytes) -> None:
-        self.value = value
-
-
-T = TypeVar("T", bound="FakeNode")
-
-
-class FakeNode:
-    @classmethod
-    def from_compact(cls: Type[T], value: bytes) -> T:
-        return cls(value)
-
-    def __init__(self, value: bytes) -> None:
-        self.value = value
-
-
-class FakeNodeId:
-    def __init__(self, value: bytes) -> None:
-        self.value = value
-
-
-class FakeInfoHash:
-    def __init__(self, value: bytes) -> None:
-        self.value = value
-
-
-class FakePrettyBytes:
-    def __init__(self, value: bytes) -> None:
-        self.value = value
-
-
 class TestConvertReply:
 
-    def test_convert_reply_values(self, monkeypatch: MonkeyPatch) -> None:
-        ip_bytes = b"ip_bytes"
-        id_bytes = b"id_bytes"
-        nodes_bytes = b"node1node2"
-        nodes6_bytes = b"node6_bytes"
-        values_list = [b"value1", b"value2"]
-        samples_bytes = b"sample_bytes"
-        token_bytes = b"token_bytes"
-        e_list = [b"error0", b"error1", b"error2"]
-        y_byte = b"y_byte"
-        q_byte = b"q_byte"
-        t_byte = b"t_byte"
+    def test_convert_reply_values(self) -> None:
+        port_bs = (1234).to_bytes(2, byteorder="big")
+        ip4_port_bs = IPv4Address("127.0.0.1").packed + port_bs
+        ip6_port_bs = IPv6Address("2001:db8:85a3::8a2e:370:7334").packed + port_bs
+        id_bs = b"\xab" * 20
+
+        nodes_bs = id_bs + ip4_port_bs + id_bs + ip4_port_bs
+        nodes6_bs = id_bs + ip6_port_bs
+        values = [ip4_port_bs, ip4_port_bs]
+        samples_bs = id_bs + id_bs + id_bs
+        token_bs = b"token_bs"
+        y_bs = b"y_bs"
+        q_bs = b"q_bs"
+        t_bs = b"t_bs"
 
         raw = {
-            b"ip": ip_bytes,
+            b"ip": ip4_port_bs,
             b"r": {
-                b"id": id_bytes,
-                b"nodes": nodes_bytes,
-                b"nodes6": nodes6_bytes,
-                b"values": values_list[:],
-                b"samples": samples_bytes,
-                b"token": token_bytes,
+                b"id": id_bs,
+                b"nodes": nodes_bs,
+                b"nodes6": nodes6_bs,
+                b"values": values[:],
+                b"samples": samples_bs,
+                b"token": token_bs,
             },
-            b"e": e_list[:],
-            b"y": y_byte,
-            b"q": q_byte,
-            b"t": t_byte,
+            b"e": [201, b"Generic Error"],
+            b"y": y_bs,
+            b"q": q_bs,
+            b"t": t_bs,
         }
 
-        monkeypatch.setattr(dht_query.util.InetAddr, "from_compact", FakeInetAddr)  # type: ignore
-        monkeypatch.setattr(dht_query.util.Node, "from_compact", FakeNode)  # type: ignore
-        monkeypatch.setattr(dht_query.util, "NodeId", FakeNodeId)
-        monkeypatch.setattr(dht_query.util, "InfoHash", FakeInfoHash)
-        monkeypatch.setattr(dht_query.util, "PrettyBytes", FakePrettyBytes)
-        monkeypatch.setattr(dht_query.util, "split_bytes", lambda bs, _size: [bs])
-        monkeypatch.setattr(
-            dht_query.util, "maybe_strict", lambda _strict: contextlib.nullcontext()
-        )
-
         msg = convert_reply(raw)
-
-        assert isinstance(msg["ip"], FakeInetAddr)
-        assert msg["ip"].value == ip_bytes
-
         r = msg["r"]
 
-        assert isinstance(r["id"], FakeNodeId)
-        assert r["id"].value == id_bytes
-
-        assert isinstance(r["nodes"], list)
-        assert isinstance(r["nodes"][0], FakeNode)
-        assert r["nodes"][0].value == nodes_bytes
-
-        assert isinstance(r["nodes6"], list)
-        assert isinstance(r["nodes6"][0], FakeNode)
-        assert r["nodes6"][0].value == nodes6_bytes
-
-        assert isinstance(r["values"], list)
-        assert isinstance(r["values"][0], FakeInetAddr)
-        assert r["values"][0].value == values_list[0]
-
-        assert isinstance(r["samples"], list)
-        assert isinstance(r["samples"][0], FakeInfoHash)
-        assert r["samples"][0].value == samples_bytes
-
-        assert isinstance(r["token"], FakePrettyBytes)
-        assert r["token"].value == token_bytes
-
-        assert isinstance(msg["e"], list)
-        assert isinstance(msg["e"][1], str)
-        assert msg["e"][1] == e_list[1].decode("utf-8")
-
-        assert isinstance(msg["y"], str)
-        assert msg["y"] == y_byte.decode("utf-8")
-
-        assert isinstance(msg["q"], str)
-        assert msg["q"] == q_byte.decode("utf-8")
-
-        assert isinstance(msg["t"], FakePrettyBytes)
-        assert msg["t"].value == t_byte
+        assert msg["ip"] == InetAddr.from_compact(ip4_port_bs)
+        assert r["id"] == NodeId(id_bs)
+        assert r["nodes"] == [
+            Node.from_compact(id_bs + ip4_port_bs),
+            Node.from_compact(id_bs + ip4_port_bs),
+        ]
+        assert r["nodes6"] == [Node.from_compact(nodes6_bs)]
+        assert r["values"] == [
+            InetAddr.from_compact(values[0]),
+            InetAddr.from_compact(values[1]),
+        ]
+        assert r["samples"] == [InfoHash(id_bs), InfoHash(id_bs), InfoHash(id_bs)]
+        assert r["token"] == PrettyBytes(token_bs)
+        assert msg["e"] == [201, "Generic Error"]
+        assert msg["y"] == y_bs.decode("utf-8")
+        assert msg["q"] == q_bs.decode("utf-8")
+        assert msg["t"] == PrettyBytes(t_bs)
 
     def test_convert_reply_empty_input(self) -> None:
         assert convert_reply({}, strict=False) == {}
@@ -179,9 +117,6 @@ class TestConvertReply:
     @pytest.mark.parametrize("value", [[], [b"only_one"]])
     def test_convert_reply_e_length_less_than_two(self, value: list) -> None:
         raw = {b"e": value}
-
-        result = convert_reply(raw, strict=False)
-        assert result["e"] == value
 
         result = convert_reply(raw, strict=False)
         assert result["e"] == value
