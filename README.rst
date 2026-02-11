@@ -1,4 +1,4 @@
-|repostatus| |ci-status| |license|
+|repostatus| |ci-status| |coverage| |license|
 
 .. |repostatus| image:: https://www.repostatus.org/badges/latest/concept.svg
     :target: https://www.repostatus.org/#concept
@@ -9,6 +9,9 @@
 .. |ci-status| image:: https://github.com/jwodder/dht-query/actions/workflows/test.yml/badge.svg
     :target: https://github.com/jwodder/dht-query/actions/workflows/test.yml
     :alt: CI Status
+
+.. |coverage| image:: https://codecov.io/gh/jwodder/dht-query/branch/main/graph/badge.svg
+    :target: https://codecov.io/gh/jwodder/dht-query
 
 .. |license| image:: https://img.shields.io/github/license/jwodder/dht-query.svg
     :target: https://opensource.org/licenses/MIT
