@@ -46,7 +46,20 @@ jobs:
           python -m pip install --upgrade pip wheel
           python -m pip install --upgrade --upgrade-strategy=eager tox
 
-      - name: Run tests
+      - name: Run tests with coverage
+        if: matrix.toxenv == 'py'
+        run: tox -e py -- --cov-report=xml
+
+      - name: Run generic tests
+        if: matrix.toxenv != 'py'
         run: tox -e ${{ matrix.toxenv }}
+
+      - name: Upload coverage to Codecov
+        if: matrix.toxenv == 'py'
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: ${{ matrix.python-version }}
 
 # vim:set et sts=2:
