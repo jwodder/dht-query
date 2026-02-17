@@ -2,7 +2,7 @@ from __future__ import annotations
 from binascii import crc32
 from ipaddress import IPv4Address, IPv6Address, ip_address
 import logging
-from pprint import pprint
+from pprint import pformat
 import random
 import socket
 import sys
@@ -170,7 +170,7 @@ def ping(addr: InetAddr, timeout: float, json: bool) -> None:
     if json:
         print(jsonify(msg))
     else:
-        pprint(msg)
+        print(pformat(msg))
 
 
 @main.command()
@@ -219,7 +219,7 @@ def get_peers(
     if json:
         print(jsonify(msg))
     else:
-        pprint(msg)
+        print(pformat(msg))
 
 
 @main.command()
@@ -268,7 +268,7 @@ def find_node(
     if json:
         print(jsonify(msg))
     else:
-        pprint(msg)
+        print(pformat(msg))
 
 
 @main.command()
@@ -312,7 +312,7 @@ def announce_peer(
     if json:
         print(jsonify(msg))
     else:
-        pprint(msg)
+        print(pformat(msg))
 
 
 @main.command()
@@ -350,7 +350,7 @@ def sample_infohashes(
     if json:
         print(jsonify(msg))
     else:
-        pprint(msg)
+        print(pformat(msg))
 
 
 @main.command()
@@ -382,7 +382,7 @@ def error(addr: InetAddr, timeout: float, json: bool) -> None:
     if json:
         print(jsonify(msg))
     else:
-        pprint(msg)
+        print(pformat(msg))
 
 
 @main.command("get-node-id")

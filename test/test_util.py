@@ -1,8 +1,9 @@
 from ipaddress import IPv4Address, IPv6Address
+import pprint
 from typing import Any
 import pytest
 from dht_query.types import InetAddr, InfoHash, Node, NodeId, PrettyBytes
-from dht_query.util import convert_reply, split_bytes, strify_keys
+from dht_query.util import convert_reply, for_json, jsonify, split_bytes, strify_keys
 
 
 class BadType:
@@ -178,3 +179,143 @@ class TestSplitBytes:
 
         with pytest.raises(ValueError):
             list(split_bytes(bs, size))
+
+
+@pytest.fixture
+def raw_message() -> dict:
+    port_bs = (1234).to_bytes(2, byteorder="big")
+    ip4_port_bs = IPv4Address("127.0.0.1").packed + port_bs
+    ip6_port_bs = IPv6Address("2001:db8:85a3::8a2e:370:7334").packed + port_bs
+    id_bs = b"\xab" * 20
+
+    nodes_bs = id_bs + ip4_port_bs + id_bs + ip4_port_bs
+    nodes6_bs = id_bs + ip6_port_bs
+    values = [ip4_port_bs, ip4_port_bs]
+    samples_bs = id_bs + id_bs + id_bs
+    token_bs = b"token_bs"
+    y_bs = b"y_bs"
+    q_bs = b"q_bs"
+    t_bs = b"t_bs"
+
+    return {
+        b"ip": ip4_port_bs,
+        b"r": {
+            b"id": id_bs,
+            b"nodes": nodes_bs,
+            b"nodes6": nodes6_bs,
+            b"values": values[:],
+            b"samples": samples_bs,
+            b"token": token_bs,
+        },
+        b"e": [201, b"Generic Error"],
+        b"y": y_bs,
+        b"q": q_bs,
+        b"t": t_bs,
+    }
+
+
+def test_pretty_printing(raw_message: dict) -> None:
+    msg = convert_reply(raw_message)
+
+    expected = """{'e': [201, 'Generic Error'],
+ 'ip': InetAddr(host=IPv4Address('127.0.0.1'), port=1234),
+ 'q': 'q_bs',
+ 'r': {'id': NodeId('abababababababababababababababababababab'),
+       'nodes': [Node(id=NodeId('abababababababababababababababababababab'),
+                      ip=IPv4Address('127.0.0.1'),
+                      port=1234),
+                 Node(id=NodeId('abababababababababababababababababababab'),
+                      ip=IPv4Address('127.0.0.1'),
+                      port=1234)],
+       'nodes6': [Node(id=NodeId('abababababababababababababababababababab'),
+                       ip=IPv6Address('2001:db8:85a3::8a2e:370:7334'),
+                       port=1234)],
+       'samples': [InfoHash('abababababababababababababababababababab'),
+                   InfoHash('abababababababababababababababababababab'),
+                   InfoHash('abababababababababababababababababababab')],
+       'token': bytes.fromhex('746f6b656e5f6273'),
+       'values': [InetAddr(host=IPv4Address('127.0.0.1'), port=1234),
+                  InetAddr(host=IPv4Address('127.0.0.1'), port=1234)]},
+ 't': bytes.fromhex('745f6273'),
+ 'y': 'y_bs'}"""
+
+    # We pass all default parameters explicitly to ensure the test remains independent
+    # of the Python version and future changes to pformat defaults.
+    formatted = pprint.pformat(
+        msg,
+        indent=1,
+        width=80,
+        depth=None,
+        compact=False,
+        sort_dicts=True,
+        underscore_numbers=False,
+    )
+
+    assert formatted == expected
+
+
+def test_jsonify(raw_message: dict) -> None:
+    msg = convert_reply(raw_message)
+    expected = """{
+    "ip": "127.0.0.1:1234",
+    "r": {
+        "id": "abababababababababababababababababababab",
+        "nodes": [
+            {
+                "id": "abababababababababababababababababababab",
+                "ip": "127.0.0.1",
+                "port": 1234
+            },
+            {
+                "id": "abababababababababababababababababababab",
+                "ip": "127.0.0.1",
+                "port": 1234
+            }
+        ],
+        "nodes6": [
+            {
+                "id": "abababababababababababababababababababab",
+                "ip": "2001:db8:85a3::8a2e:370:7334",
+                "port": 1234
+            }
+        ],
+        "values": [
+            "127.0.0.1:1234",
+            "127.0.0.1:1234"
+        ],
+        "samples": [
+            "abababababababababababababababababababab",
+            "abababababababababababababababababababab",
+            "abababababababababababababababababababab"
+        ],
+        "token": "746f6b656e5f6273"
+    },
+    "e": [
+        201,
+        "Generic Error"
+    ],
+    "y": "y_bs",
+    "q": "q_bs",
+    "t": "745f6273"
+}"""
+
+    assert jsonify(msg) == expected
+
+
+class JsonMe:
+    def for_json(self) -> str:
+        return "{data: json}"
+
+
+@pytest.mark.parametrize(
+    "obj, expected", [(JsonMe(), "{data: json}"), (b"hello", b"hello".hex())]
+)
+def test_for_json_valid(obj: Any, expected: str) -> None:
+    assert for_json(obj) == expected
+
+
+def test_for_json_type_error() -> None:
+    bad_obj = BadType()
+    with pytest.raises(TypeError) as e:
+        for_json(bad_obj)
+    assert str(e.value) == "BadType"
