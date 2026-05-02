@@ -104,7 +104,7 @@ follows:
 
 ::
 
-    dht-query announce-peer [-J] [-t <timeout>] <host>:<port> <info-hash> <port> <token>
+    dht-query announce-peer [-J] [-t TIMEOUT] <host>:<port> <info-hash> <port> <token>
 
 Send an "announce_peer" query for the given info hash to the given node and
 pretty-print the decoded response.  The ``<port>`` argument is the port of the
@@ -117,7 +117,7 @@ remote node, specified on the command line in hexadecimal.
 
 ::
 
-    dht-query error [-J] [-t <timeout>] <host>:<port>
+    dht-query error [-J] [-t TIMEOUT] <host>:<port>
 
 Send a query with an invalid method to the given node to see how it reacts.
 
@@ -125,7 +125,7 @@ Send a query with an invalid method to the given node to see how it reacts.
 -------------
 ::
 
-    dht-query find-node [-J] [-t <timeout>] [--want4] [--want6] <host>:<port> <node-id>
+    dht-query find-node [-J] [-t TIMEOUT] [--want4] [--want6] <host>:<port> <node-id>
 
 Send a "find_node" query for the given node ID to the given node and
 pretty-print the decoded response.
@@ -148,7 +148,7 @@ Print out the locally-stored node ID in hexadecimal.
 
 ::
 
-    dht-query get-peers [-J] [-t <timeout>] [--want4] [--want6] <host>:<port> <info-hash>
+    dht-query get-peers [-J] [-t TIMEOUT] [--want4] [--want6] <host>:<port> <info-hash>
 
 Send a "get_peers" query for the given info hash to the given node and
 pretty-print the decoded response.
@@ -162,7 +162,7 @@ version we're communicating over.
 
 ::
 
-    dht-query ping [-J] [-t <timeout>] <host>:<port>
+    dht-query ping [-J] [-t TIMEOUT] <host>:<port>
 
 Send a "ping" query to the given node and pretty-print the decoded response.
 
@@ -171,7 +171,7 @@ Send a "ping" query to the given node and pretty-print the decoded response.
 
 ::
 
-    dht-query sample-infohashes [-J] [-t <timeout>] <host>:<port> <node-id>
+    dht-query sample-infohashes [-J] [-t TIMEOUT] <host>:<port> <node-id>
 
 Send a "sample_infohashes" query to the given node and pretty-print the decoded
 response.  The ``<node-id>`` argument is used in the query as the "target"
@@ -218,7 +218,7 @@ Options
 
 ::
 
-    dht-query set-node-id [--ip <ip>]
+    dht-query set-node-id [--ip IP]
 
 Randomly generate a new node ID to send in outgoing queries, print it out in
 hexadecimal, and store it locally; see above for the file path at which the
